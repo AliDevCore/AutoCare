@@ -10,8 +10,9 @@ import ir.alidevcore.autocare.worker.RescheduleRemindersWorker
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED ||
+            intent.action == Intent.ACTION_MY_PACKAGE_REPLACED ||
             intent.action == "android.intent.action.QUICKBOOT_POWERON") {
-            // Reschedule all reminders after reboot
+            // Reschedule all reminders after reboot or app update
             val workRequest = OneTimeWorkRequestBuilder<RescheduleRemindersWorker>().build()
             WorkManager.getInstance(context).enqueue(workRequest)
         }

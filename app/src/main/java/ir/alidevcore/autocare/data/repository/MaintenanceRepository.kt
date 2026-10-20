@@ -78,6 +78,12 @@ class MaintenanceRepository @Inject constructor(
     suspend fun getTotalCostForVehicleAllTime(vehicleId: Long): Long =
         recordDao.getTotalCostForVehicleAllTime(vehicleId)
 
+    fun getRecordsForVehicleInDateRange(vehicleId: Long, fromDate: Long, toDate: Long): Flow<List<MaintenanceRecord>> =
+        recordDao.getRecordsForVehicleInDateRange(vehicleId, fromDate, toDate)
+
+    suspend fun getTotalCostForVehicleInRange(vehicleId: Long, fromDate: Long, toDate: Long): Long =
+        recordDao.getTotalCostForVehicleInRange(vehicleId, fromDate, toDate)
+
     fun searchRecords(
         vehicleId: Long,
         query: String = "",
@@ -88,12 +94,8 @@ class MaintenanceRepository @Inject constructor(
         toDate: Long = -1,
         fromCost: Long = -1,
         toCost: Long = -1
-    ): Flow<List<MaintenanceRecord>> = recordDao.searchRecords(
-        vehicleId, query, category, fromKm, toKm, fromDate, toDate, fromCost, toCost
-    )
-
-    suspend fun getTotalCostForVehicleInRange(vehicleId: Long, fromDate: Long, toDate: Long): Long =
-        recordDao.getTotalCostForVehicleInRange(vehicleId, fromDate, toDate)
+    ): Flow<List<MaintenanceRecord>> =
+        recordDao.searchRecords(vehicleId, query, category, fromKm, toKm, fromDate, toDate, fromCost, toCost)
 
     suspend fun getMonthlyCostSummary(vehicleId: Long, fromDate: Long, toDate: Long) =
         recordDao.getMonthlyCostSummary(vehicleId, fromDate, toDate)
@@ -117,36 +119,30 @@ class MaintenanceRepository @Inject constructor(
     suspend fun getServiceById(id: Long): PlannedService? = plannedDao.getServiceById(id)
 
     suspend fun insertPlannedService(service: PlannedService): Long =
-        plannedDao.insertService(service)
+        plannedDao.insertPlannedService(service)
 
-    suspend fun updatePlannedService(service: PlannedService) = plannedDao.updateService(service)
+    suspend fun updatePlannedService(service: PlannedService) =
+        plannedDao.updatePlannedService(service)
 
-    suspend fun deletePlannedService(service: PlannedService) = plannedDao.deleteService(service)
+    suspend fun deletePlannedService(service: PlannedService) =
+        plannedDao.deletePlannedService(service)
 
     suspend fun markPlanAsDone(planId: Long, recordId: Long) =
         plannedDao.markAsDone(planId, recordId)
 
-    suspend fun getAllPendingServicesWithDate(): List<PlannedService> =
-        plannedDao.getAllPendingServicesWithDate()
+    suspend fun markPlanAsCancelled(planId: Long) =
+        plannedDao.markAsCancelled(planId)
 
     // -------------------------------------------------------------------------
-    // Status Computation
+    // Business Logic / Status Aggregation
     // -------------------------------------------------------------------------
 
     /**
-     * Computes [ServiceStatus] for each active maintenance item belonging to [vehicleId].
+     * Computes the current [ServiceStatus] and next service metrics for all active
+     * items of a vehicle, combining the last recorded service with any pending
+     * planned services.
      *
-     * Status rules (evaluated in priority order):
-     * 1. **NO_SCHEDULE** – the item has no pending planned service with a nextKm or nextDate.
-     * 2. **OVERDUE**    – currentKm >= nextKm  OR  currentTimeMs > nextDate.
-     * 3. **UPCOMING**   – (nextKm - currentKm) <= [kmThreshold]
-     *                      OR  (nextDate - currentTimeMs) <= [daysThreshold] days (in ms).
-     * 4. **OK**         – everything else.
-     *
-     * The function collects each Flow exactly once using [Flow.first], which is safe inside a
-     * suspend function running on a coroutine dispatcher.
-     *
-     * @param vehicleId   ID of the vehicle whose items should be evaluated.
+     * @param vehicleId   The ID of the vehicle whose item statuses should be computed.
      * @param currentKm   Latest odometer reading for the vehicle (in km).
      * @param kmThreshold Distance margin (km) that marks a service as UPCOMING (default 500 km).
      * @param daysThreshold Day margin that marks a service as UPCOMING (default 7 days).
@@ -165,14 +161,23 @@ class MaintenanceRepository @Inject constructor(
         val pendingServices: List<PlannedService> =
             plannedDao.getPendingServicesForVehicle(vehicleId).first()
 
+        val now = System.currentTimeMillis()
         val serviceByItem: Map<Long, PlannedService> = pendingServices
             .groupBy { it.itemId }
             .mapValues { (_, services) ->
                 services.minWithOrNull(
-                    compareBy(
-                        { it.targetKm ?: Long.MAX_VALUE },
-                        { it.targetDate ?: Long.MAX_VALUE }
-                    )
+                    compareBy<PlannedService> { plan ->
+                        // 1. Overdue plans get highest priority
+                        val isKmOverdue = plan.targetKm != null && currentKm >= plan.targetKm
+                        val isDateOverdue = plan.targetDate != null && now >= plan.targetDate
+                        if (isKmOverdue || isDateOverdue) 0 else 1
+                    }.thenBy { plan ->
+                        // 2. Urgent target kilometers
+                        plan.targetKm?.let { (it - currentKm).coerceAtLeast(0) } ?: Long.MAX_VALUE
+                    }.thenBy { plan ->
+                        // 3. Urgent target dates
+                        plan.targetDate?.let { (it - now).coerceAtLeast(0) } ?: Long.MAX_VALUE
+                    }
                 )!!
             }
 

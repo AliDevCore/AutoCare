@@ -8,12 +8,7 @@ import ir.alidevcore.autocare.data.model.MaintenanceItem
 import ir.alidevcore.autocare.data.model.MaintenanceRecord
 import ir.alidevcore.autocare.data.model.PlannedService
 import ir.alidevcore.autocare.data.model.Vehicle
-import org.apache.poi.ss.usermodel.BorderStyle
-import org.apache.poi.ss.usermodel.FillPatternType
-import org.apache.poi.ss.usermodel.HorizontalAlignment
-import org.apache.poi.ss.usermodel.IndexedColors
-import org.apache.poi.ss.usermodel.Sheet
-import org.apache.poi.ss.usermodel.VerticalAlignment
+import org.apache.poi.ss.usermodel.*
 import org.apache.poi.xssf.usermodel.XSSFCellStyle
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.io.File
@@ -82,6 +77,7 @@ object ExcelExporter {
 
     /**
      * Exports multiple vehicles to a single multi-sheet XLSX file.
+     * Contains summary sheet, and for each vehicle: records sheet, planned services sheet, and maintenance items sheet.
      */
     fun exportAllVehiclesToExcel(
         context: Context,
@@ -91,9 +87,8 @@ object ExcelExporter {
 
         val headerStyle = createHeaderStyle(workbook)
         val dataStyle = createDataStyle(workbook)
-        val boldStyle = createBoldStyle(workbook)
 
-        // Summary sheet for all vehicles
+        // 1. Summary sheet for all vehicles
         val summarySheet = workbook.createSheet("خلاصه خودروها")
         summarySheet.isRightToLeft = true
         val summaryHeaders = listOf("شناسه", "نام خودرو", "کیلومتر فعلی", "سال ساخت", "تعداد اقلام", "تعداد سوابق", "تعداد برنامه‌ها")
@@ -118,43 +113,28 @@ object ExcelExporter {
         }
         for (i in summaryHeaders.indices) summarySheet.autoSizeColumn(i)
 
-        // For each vehicle, create dedicated sheets
+        // 2. For each vehicle, create dedicated sheets for records, plans, and items
         allData.forEachIndexed { idx, vd ->
-            val safeName = vd.vehicle.name.take(15)
-            val sheetName = "${idx + 1}_$safeName"
+            val prefix = "${idx + 1}"
+            val safeName = vd.vehicle.name.replace("[^a-zA-Z0-9آ-ی]".toRegex(), "_").take(10)
 
-            val sheet = workbook.createSheet(sheetName)
-            sheet.isRightToLeft = true
+            // Vehicle Records Sheet
+            val recSheetName = "${prefix}_سوابق_$safeName".take(31)
+            val recordsSheet = workbook.createSheet(recSheetName)
+            recordsSheet.isRightToLeft = true
+            createRecordsSheet(recordsSheet, vd.records, headerStyle, dataStyle)
 
-            // Write Vehicle title
-            val titleRow = sheet.createRow(0)
-            val titleCell = titleRow.createCell(0)
-            titleCell.setCellValue("سوابق سرویس: ${vd.vehicle.name} (کیلومتر: ${vd.vehicle.currentKm})")
-            titleCell.cellStyle = boldStyle
+            // Vehicle Planned Services Sheet
+            val planSheetName = "${prefix}_برنامه_$safeName".take(31)
+            val plansSheet = workbook.createSheet(planSheetName)
+            plansSheet.isRightToLeft = true
+            createPlansSheet(plansSheet, vd.plans, headerStyle, dataStyle)
 
-            // Headers for records
-            val recHeaders = listOf("ردیف", "نام سرویس / قطعه", "تاریخ شمسی", "کیلومتر", "هزینه (تومان)", "توضیحات", "قطعات و مصرفی‌ها", "تعمیرگاه")
-            val recHeaderRow = sheet.createRow(2)
-            recHeaders.forEachIndexed { i, h ->
-                val cell = recHeaderRow.createCell(i)
-                cell.setCellValue(h)
-                cell.cellStyle = headerStyle
-            }
-
-            var recRowNum = 3
-            vd.records.forEachIndexed { rIdx, (record, itemName) ->
-                val row = sheet.createRow(recRowNum++)
-                row.createCell(0).setCellValue((rIdx + 1).toDouble())
-                row.createCell(1).setCellValue(itemName)
-                row.createCell(2).setCellValue(record.date?.let { JalaliDateUtil.timestampToJalaliString(it) } ?: "نامشخص")
-                row.createCell(3).setCellValue(record.km.toDouble())
-                row.createCell(4).setCellValue(record.cost?.toDouble() ?: 0.0)
-                row.createCell(5).setCellValue(record.description)
-                row.createCell(6).setCellValue(record.parts)
-                row.createCell(7).setCellValue(record.workshop)
-                for (c in 0..7) row.getCell(c).cellStyle = dataStyle
-            }
-            for (i in recHeaders.indices) sheet.autoSizeColumn(i)
+            // Vehicle Maintenance Items Sheet
+            val itemSheetName = "${prefix}_اقلام_$safeName".take(31)
+            val itemsSheet = workbook.createSheet(itemSheetName)
+            itemsSheet.isRightToLeft = true
+            createItemsSheet(itemsSheet, vd.items, headerStyle, dataStyle)
         }
 
         val (year, month, day) = JalaliDateUtil.getCurrentJalaliDate()
@@ -170,6 +150,20 @@ object ExcelExporter {
         workbook.close()
 
         return file
+    }
+
+    /**
+     * Escapes a value for safe CSV export conforming to RFC 4180
+     * and prevents spreadsheet formula injection (=, +, -, @).
+     */
+    private fun escapeCsvCell(raw: String): String {
+        var s = raw
+        // Prevent spreadsheet formula injection (=, +, -, @)
+        if (s.startsWith("=") || s.startsWith("+") || s.startsWith("-") || s.startsWith("@")) {
+            s = "'$s"
+        }
+        // Escape internal double quotes by doubling them, and wrap the whole cell in quotes
+        return "\"${s.replace("\"", "\"\"")}\""
     }
 
     /**
@@ -191,7 +185,7 @@ object ExcelExporter {
             // Write UTF-8 BOM so Excel opens Persian text properly
             fos.write(byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte()))
             OutputStreamWriter(fos, StandardCharsets.UTF_8).use { writer ->
-                writer.write("نام خودرو,${data.vehicle.name}\n")
+                writer.write("نام خودرو,${escapeCsvCell(data.vehicle.name)}\n")
                 writer.write("کیلومتر فعلی,${data.vehicle.currentKm}\n")
                 writer.write("سال ساخت,${data.vehicle.year ?: "-"}\n\n")
 
@@ -199,10 +193,16 @@ object ExcelExporter {
                 data.records.forEachIndexed { index, (record, itemName) ->
                     val shamsiDate = record.date?.let { JalaliDateUtil.timestampToJalaliString(it) } ?: "نامشخص"
                     val cost = record.cost?.toString() ?: ""
-                    val desc = "\"${record.description.replace("\"", "\"\"")}\""
-                    val parts = "\"${record.parts.replace("\"", "\"\"")}\""
-                    val workshop = "\"${record.workshop.replace("\"", "\"\"")}\""
-                    writer.write("${index + 1},$itemName,$shamsiDate,${record.km},$cost,$desc,$parts,$workshop\n")
+                    writer.write(
+                        "${index + 1}," +
+                        "${escapeCsvCell(itemName)}," +
+                        "$shamsiDate," +
+                        "${record.km}," +
+                        "$cost," +
+                        "${escapeCsvCell(record.description)}," +
+                        "${escapeCsvCell(record.parts)}," +
+                        "${escapeCsvCell(record.workshop)}\n"
+                    )
                 }
             }
         }

@@ -31,7 +31,6 @@ jobs:
 
       - name: 🧪 Run Unit Tests
         run: ./gradlew testDebugUnitTest
-        continue-on-error: true
 
       - name: 🔨 Build Debug APK
         run: ./gradlew assembleDebug
@@ -79,12 +78,15 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         with:
-          tag_name: v1.0.0
-          name: "نسخه رسمی v1.0.0 | اتوکِر AutoCare"
+          tag_name: "v1.0.${{ github.run_number }}"
+          name: "نسخه رسمی AutoCare v1.0.${{ github.run_number }}"
           body: |
             ### 🚗 دانلود مستقیم نسخه نهایی اپلیکیشن AutoCare
-            - **AutoCare-Release.apk**: نسخه نهایی و بهینه‌شده، امضاشده و آماده نصب مستقیم روی هر گوشی اندروید
+            - **AutoCare-Release.apk**: نسخه نهایی، بهینه‌شده و آماده نصب مستقیم روی هر گوشی اندروید
             - **AutoCare-Debug.apk**: نسخه تست و دیباگ
+          draft: false
+          prerelease: false
+          make_latest: true
           files: |
             output_apks/AutoCare-Release.apk
             output_apks/AutoCare-Debug.apk
