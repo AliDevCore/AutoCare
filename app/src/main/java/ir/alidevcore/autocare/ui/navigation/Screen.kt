@@ -36,4 +36,9 @@ sealed class Screen(val route: String) {
     object ExportData : Screen("export/{vehicleId}") {
         fun createRoute(vehicleId: Long) = "export/$vehicleId"
     }
+    object BulkRecord : Screen("bulk_record/{vehicleId}?itemId={itemId}") {
+        fun createRoute(vehicleId: Long, itemId: Long? = null): String {
+            return "bulk_record/$vehicleId" + if (itemId != null) "?itemId=$itemId" else ""
+        }
+    }
 }

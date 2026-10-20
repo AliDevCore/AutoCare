@@ -21,7 +21,7 @@ data class MaintenanceRecord(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val itemId: Long,
-    val date: Long,             // timestamp of service date (stored as epoch ms, represents the date)
+    val date: Long? = null,     // timestamp of service date (stored as epoch ms, nullable for historical records)
     val km: Long,               // odometer at service time
     val cost: Long? = null,     // هزینه (تومان) - اختیاری
     val description: String = "",

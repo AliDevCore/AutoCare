@@ -41,7 +41,8 @@ fun DashboardScreen(
     onNavigateToHistory: () -> Unit,
     onNavigateToItems: () -> Unit,
     onNavigateToExpenses: () -> Unit,
-    onNavigateToExport: () -> Unit
+    onNavigateToExport: () -> Unit,
+    onNavigateToBulkRecord: (itemId: Long?) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showKmDialog by remember { mutableStateOf(false) }
@@ -194,6 +195,63 @@ fun DashboardScreen(
                             onHistory = onNavigateToHistory,
                             onItems = onNavigateToItems
                         )
+                    }
+
+                    // 2.5 Quick Historical Records Bulk Entry
+                    item {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onNavigateToBulkRecord(null) },
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(14.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    modifier = Modifier.weight(1f),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.tertiary),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            Icons.Default.PlaylistAdd,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onTertiary
+                                        )
+                                    }
+                                    Spacer(Modifier.width(12.dp))
+                                    Column {
+                                        Text(
+                                            text = "ثبت دسته‌جمعی سوابق گذشته",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                                        )
+                                        Text(
+                                            text = "ورود سریع سوابق گذشته (مانند شمع یا لنت در کیلومترهای مختلف)",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                                        )
+                                    }
+                                }
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                            }
+                        }
                     }
 
                     // 3. Monthly Expense Summary Card

@@ -74,7 +74,10 @@ class ExpensesViewModel @Inject constructor(
                     ExpensePeriod.THIS_MONTH -> JalaliDateUtil.getStartOfJalaliMonth(currentYear, currentMonth)
                 }
 
-                val periodRecords = allRecords.filter { it.date in fromDate..now }
+                val periodRecords = allRecords.filter { rec ->
+                    if (period == ExpensePeriod.ALL_TIME) true
+                    else rec.date != null && rec.date in fromDate..now
+                }
                 val costedRecords = periodRecords.filter { it.cost != null }
                 val total = costedRecords.sumOf { it.cost!! }
 
@@ -105,7 +108,7 @@ class ExpensesViewModel @Inject constructor(
                     val mStart = JalaliDateUtil.getStartOfJalaliMonth(y, m)
                     val mEnd = JalaliDateUtil.getEndOfJalaliMonth(y, m)
 
-                    val mRecs = allRecords.filter { it.date in mStart..mEnd && it.cost != null }
+                    val mRecs = allRecords.filter { it.date != null && it.date in mStart..mEnd && it.cost != null }
                     val mTotal = mRecs.sumOf { it.cost!! }
                     val mName = JalaliDateUtil.getJalaliMonthName(m)
 

@@ -168,16 +168,22 @@ class RecordsHistoryViewModel @Inject constructor(
 
         // Date range
         if (state.fromDate != null) {
-            list = list.filter { it.record.date >= state.fromDate }
+            list = list.filter { it.record.date != null && it.record.date >= state.fromDate }
         }
         if (state.toDate != null) {
-            list = list.filter { it.record.date <= state.toDate }
+            list = list.filter { it.record.date != null && it.record.date <= state.toDate }
         }
 
         // Sorting
         list = when (state.sortOption) {
-            SortOption.DATE_DESC -> list.sortedByDescending { it.record.date }
-            SortOption.DATE_ASC -> list.sortedBy { it.record.date }
+            SortOption.DATE_DESC -> list.sortedWith(
+                compareByDescending<RecordWithItemInfo> { it.record.date ?: 0L }
+                    .thenByDescending { it.record.km }
+            )
+            SortOption.DATE_ASC -> list.sortedWith(
+                compareBy<RecordWithItemInfo> { it.record.date ?: Long.MAX_VALUE }
+                    .thenBy { it.record.km }
+            )
             SortOption.KM_DESC -> list.sortedByDescending { it.record.km }
             SortOption.KM_ASC -> list.sortedBy { it.record.km }
         }

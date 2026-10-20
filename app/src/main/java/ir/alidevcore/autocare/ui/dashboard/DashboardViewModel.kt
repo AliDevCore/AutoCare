@@ -70,7 +70,7 @@ class DashboardViewModel @Inject constructor(
                                 RecordDisplay(
                                     record = record,
                                     itemName = item?.name ?: "نامشخص",
-                                    dateDisplay = JalaliDateUtil.timestampToJalaliStringWithMonthName(record.date)
+                                    dateDisplay = record.date?.let { JalaliDateUtil.timestampToJalaliStringWithMonthName(it) } ?: "فقط کارکرد"
                                 )
                             )
                         }

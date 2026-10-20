@@ -34,6 +34,8 @@ import ir.alidevcore.autocare.ui.navigation.Screen
 import ir.alidevcore.autocare.ui.plans.AddEditPlanScreen
 import ir.alidevcore.autocare.ui.plans.PlanViewModel
 import ir.alidevcore.autocare.ui.records.AddEditRecordScreen
+import ir.alidevcore.autocare.ui.records.BulkRecordScreen
+import ir.alidevcore.autocare.ui.records.BulkRecordViewModel
 import ir.alidevcore.autocare.ui.records.RecordViewModel
 import ir.alidevcore.autocare.ui.records.RecordsHistoryScreen
 import ir.alidevcore.autocare.ui.records.RecordsHistoryViewModel
@@ -122,6 +124,9 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onNavigateToExport = {
                                         navController.navigate(Screen.ExportData.createRoute(vehicleId))
+                                    },
+                                    onNavigateToBulkRecord = { itemId ->
+                                        navController.navigate(Screen.BulkRecord.createRoute(vehicleId, itemId = itemId))
                                     }
                                 )
                             }
@@ -141,6 +146,9 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onNavigateToItemHistory = { itemId ->
                                         navController.navigate(Screen.RecordsHistory.createRoute(vehicleId, itemId = itemId))
+                                    },
+                                    onNavigateToBulkRecord = { itemId ->
+                                        navController.navigate(Screen.BulkRecord.createRoute(vehicleId, itemId = itemId))
                                     }
                                 )
                             }
@@ -158,7 +166,10 @@ class MainActivity : ComponentActivity() {
                                 val viewModel: RecordViewModel = hiltViewModel()
                                 AddEditRecordScreen(
                                     viewModel = viewModel,
-                                    onNavigateBack = { navController.popBackStack() }
+                                    onNavigateBack = { navController.popBackStack() },
+                                    onNavigateToBulkRecord = { itemId ->
+                                        navController.navigate(Screen.BulkRecord.createRoute(vehicleId, itemId = itemId))
+                                    }
                                 )
                             }
 
@@ -196,6 +207,9 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onAddNewRecord = {
                                         navController.navigate(Screen.AddRecord.createRoute(vehicleId))
+                                    },
+                                    onBulkRecord = {
+                                        navController.navigate(Screen.BulkRecord.createRoute(vehicleId))
                                     }
                                 )
                             }
@@ -219,6 +233,21 @@ class MainActivity : ComponentActivity() {
                             ) {
                                 val viewModel: ExportViewModel = hiltViewModel()
                                 ExportScreen(
+                                    viewModel = viewModel,
+                                    onNavigateBack = { navController.popBackStack() }
+                                )
+                            }
+
+                            // 9. Bulk Historical Records Screen
+                            composable(
+                                route = Screen.BulkRecord.route,
+                                arguments = listOf(
+                                    navArgument("vehicleId") { type = NavType.LongType },
+                                    navArgument("itemId") { type = NavType.LongType; defaultValue = -1L }
+                                )
+                            ) {
+                                val viewModel: BulkRecordViewModel = hiltViewModel()
+                                BulkRecordScreen(
                                     viewModel = viewModel,
                                     onNavigateBack = { navController.popBackStack() }
                                 )

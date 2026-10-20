@@ -146,7 +146,7 @@ object ExcelExporter {
                 val row = sheet.createRow(recRowNum++)
                 row.createCell(0).setCellValue((rIdx + 1).toDouble())
                 row.createCell(1).setCellValue(itemName)
-                row.createCell(2).setCellValue(JalaliDateUtil.timestampToJalaliString(record.date))
+                row.createCell(2).setCellValue(record.date?.let { JalaliDateUtil.timestampToJalaliString(it) } ?: "نامشخص")
                 row.createCell(3).setCellValue(record.km.toDouble())
                 row.createCell(4).setCellValue(record.cost?.toDouble() ?: 0.0)
                 row.createCell(5).setCellValue(record.description)
@@ -197,7 +197,7 @@ object ExcelExporter {
 
                 writer.write("ردیف,نام قطعه/سرویس,تاریخ شمسی,کیلومتر,هزینه (تومان),توضیحات,قطعات مصرفی,تعمیرگاه\n")
                 data.records.forEachIndexed { index, (record, itemName) ->
-                    val shamsiDate = JalaliDateUtil.timestampToJalaliString(record.date)
+                    val shamsiDate = record.date?.let { JalaliDateUtil.timestampToJalaliString(it) } ?: "نامشخص"
                     val cost = record.cost?.toString() ?: ""
                     val desc = "\"${record.description.replace("\"", "\"\"")}\""
                     val parts = "\"${record.parts.replace("\"", "\"\"")}\""
@@ -284,7 +284,7 @@ object ExcelExporter {
             val row = sheet.createRow(index + 1)
             row.createCell(0).setCellValue((index + 1).toDouble())
             row.createCell(1).setCellValue(itemName)
-            row.createCell(2).setCellValue(JalaliDateUtil.timestampToJalaliString(record.date))
+            row.createCell(2).setCellValue(record.date?.let { JalaliDateUtil.timestampToJalaliString(it) } ?: "نامشخص")
             row.createCell(3).setCellValue(record.km.toDouble())
             row.createCell(4).setCellValue(record.cost?.toDouble() ?: 0.0)
             row.createCell(5).setCellValue(record.description)

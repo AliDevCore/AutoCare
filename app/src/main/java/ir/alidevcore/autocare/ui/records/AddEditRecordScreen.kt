@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,7 +26,8 @@ import ir.alidevcore.autocare.util.NumberUtil
 @Composable
 fun AddEditRecordScreen(
     viewModel: RecordViewModel,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToBulkRecord: ((Long?) -> Unit)? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showDatePicker by remember { mutableStateOf(false) }
@@ -152,6 +154,46 @@ fun AddEditRecordScreen(
                     fontWeight = FontWeight.Bold
                 )
 
+                if (!uiState.isEditing && onNavigateToBulkRecord != null) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onNavigateToBulkRecord(uiState.selectedItem?.id) }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.PlaylistAdd,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "ثبت دسته‌جمعی سوابق گذشته",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                                Text(
+                                    text = "برای ثبت سریع چندین نوبت سرویس در گذشته (مثلاً در چند کیلومتر مختلف بدون تاریخ)",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                            }
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        }
+                    }
+                }
+
                 Box(modifier = Modifier.fillMaxWidth()) {
                     OutlinedTextField(
                         value = uiState.selectedItem?.let { "${it.name} (${it.category})" } ?: "انتخاب سرویس...",
@@ -190,20 +232,66 @@ fun AddEditRecordScreen(
                 }
 
                 // 2. Date Selection (Shamsi)
-                OutlinedTextField(
-                    value = JalaliDateUtil.timestampToJalaliStringWithMonthName(uiState.date),
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("تاریخ انجام سرویس (شمسی)*") },
-                    trailingIcon = {
-                        IconButton(onClick = { showDatePicker = true }) {
-                            Icon(Icons.Default.CalendarToday, contentDescription = "انتخاب تاریخ")
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { viewModel.onToggleDateUnknown(!uiState.isDateUnknown) }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = uiState.isDateUnknown,
+                            onCheckedChange = { viewModel.onToggleDateUnknown(it) }
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = "تاریخ دقیق را به یاد ندارم (ثبت سابقه فقط با کیلومتر)",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+
+                    if (!uiState.isDateUnknown) {
+                        OutlinedTextField(
+                            value = JalaliDateUtil.timestampToJalaliStringWithMonthName(uiState.date),
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("تاریخ انجام سرویس (شمسی)*") },
+                            trailingIcon = {
+                                IconButton(onClick = { showDatePicker = true }) {
+                                    Icon(Icons.Default.CalendarToday, contentDescription = "انتخاب تاریخ")
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showDatePicker = true }
+                        )
+                    } else {
+                        Surface(
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.EventBusy,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = "این سابقه بدون تاریخ مشخص و صرفاً با ثبت کارکرد کیلومتر ذخیره می‌شود (مناسب سوابق گذشته خودرو).",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { showDatePicker = true }
-                )
+                    }
+                }
 
                 // 3. Kilometer
                 OutlinedTextField(

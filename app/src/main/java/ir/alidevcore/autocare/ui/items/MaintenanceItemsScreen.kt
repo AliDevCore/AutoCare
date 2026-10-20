@@ -25,7 +25,8 @@ fun MaintenanceItemsScreen(
     viewModel: ItemViewModel,
     onNavigateBack: () -> Unit,
     onNavigateToRecordService: (itemId: Long) -> Unit,
-    onNavigateToItemHistory: (itemId: Long) -> Unit
+    onNavigateToItemHistory: (itemId: Long) -> Unit,
+    onNavigateToBulkRecord: (itemId: Long) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
@@ -182,6 +183,7 @@ fun MaintenanceItemsScreen(
                                 item = item,
                                 onRecord = { onNavigateToRecordService(item.id) },
                                 onHistory = { onNavigateToItemHistory(item.id) },
+                                onBulkRecord = { onNavigateToBulkRecord(item.id) },
                                 onEdit = { itemToEdit = item },
                                 onDelete = { itemToDelete = item }
                             )
@@ -201,6 +203,7 @@ fun ItemRowCard(
     item: MaintenanceItem,
     onRecord: () -> Unit,
     onHistory: () -> Unit,
+    onBulkRecord: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -261,6 +264,14 @@ fun ItemRowCard(
                             onClick = {
                                 menuExpanded = false
                                 onRecord()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("ثبت دسته‌جمعی سوابق گذشته") },
+                            leadingIcon = { Icon(Icons.Default.PlaylistAdd, contentDescription = null) },
+                            onClick = {
+                                menuExpanded = false
+                                onBulkRecord()
                             }
                         )
                         DropdownMenuItem(

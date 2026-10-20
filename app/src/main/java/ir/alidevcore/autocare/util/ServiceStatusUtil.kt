@@ -31,7 +31,7 @@ object ServiceStatusUtil {
         // If there's a pending planned service with target date, use that
         plannedService?.targetDate?.let { return it }
         // Otherwise compute from last record date + interval months
-        if (lastRecord != null && item.intervalMonths != null) {
+        if (lastRecord?.date != null && item.intervalMonths != null) {
             return JalaliDateUtil.addMonthsToTimestamp(lastRecord.date, item.intervalMonths)
         }
         return null

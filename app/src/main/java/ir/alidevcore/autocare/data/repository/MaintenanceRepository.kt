@@ -69,9 +69,14 @@ class MaintenanceRepository @Inject constructor(
 
     suspend fun insertRecord(record: MaintenanceRecord): Long = recordDao.insertRecord(record)
 
+    suspend fun insertRecords(records: List<MaintenanceRecord>): List<Long> = recordDao.insertRecords(records)
+
     suspend fun updateRecord(record: MaintenanceRecord) = recordDao.updateRecord(record)
 
     suspend fun deleteRecord(record: MaintenanceRecord) = recordDao.deleteRecord(record)
+
+    suspend fun getTotalCostForVehicleAllTime(vehicleId: Long): Long =
+        recordDao.getTotalCostForVehicleAllTime(vehicleId)
 
     fun searchRecords(
         vehicleId: Long,

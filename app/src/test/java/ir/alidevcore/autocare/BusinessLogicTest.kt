@@ -62,4 +62,45 @@ class BusinessLogicTest {
         assertEquals(800000L, v2Total)
         assertNotEquals(v1Total, v2Total)
     }
+
+    @Test
+    fun testHistoricalRecordsWithNullDates() {
+        // User entered historical spark plug replacements at 30k, 60k, 90k, 130k without dates
+        val historicalRecords = listOf(
+            MaintenanceRecord(id = 1, itemId = 10, date = null, km = 30000L),
+            MaintenanceRecord(id = 2, itemId = 10, date = null, km = 60000L),
+            MaintenanceRecord(id = 3, itemId = 10, date = null, km = 90000L),
+            MaintenanceRecord(id = 4, itemId = 10, date = null, km = 130000L)
+        )
+
+        val latestRecord = historicalRecords.maxByOrNull { it.km }
+        assertNotNull(latestRecord)
+        assertEquals(130000L, latestRecord!!.km)
+        assertNull(latestRecord.date)
+
+        // Spark plugs interval is 30,000 km
+        val intervalKm = 30000L
+        val nextKm = latestRecord.km + intervalKm
+        assertEquals(160000L, nextKm)
+    }
+
+    @Test
+    fun testBulkKmParsingRegex() {
+        val input = "30000, 60000، 90000 - 130000"
+        val normalized = input
+            .replace('۰', '0').replace('۱', '1').replace('۲', '2')
+            .replace('۳', '3').replace('۴', '4').replace('۵', '5')
+            .replace('۶', '6').replace('۷', '7').replace('۸', '8')
+            .replace('۹', '9')
+            .replace("هزار", "000")
+            .replace("k", "000", ignoreCase = true)
+
+        val tokens = normalized.split(Regex("[,،;\\n\\r\\t\\/\\|\\-\\s]+"))
+        val parsed = tokens.mapNotNull { token ->
+            val digitsOnly = token.replace(Regex("[^0-9]"), "")
+            digitsOnly.toLongOrNull()
+        }.filter { it > 0 }.distinct().sorted()
+
+        assertEquals(listOf(30000L, 60000L, 90000L, 130000L), parsed)
+    }
 }

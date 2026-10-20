@@ -14,7 +14,7 @@ import ir.alidevcore.autocare.data.model.*
         PlannedService::class,
         ReminderSetting::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

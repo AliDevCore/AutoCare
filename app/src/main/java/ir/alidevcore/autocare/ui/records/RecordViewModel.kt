@@ -27,6 +27,7 @@ data class AddRecordUiState(
     val items: List<MaintenanceItem> = emptyList(),
     val selectedItem: MaintenanceItem? = null,
     val date: Long = System.currentTimeMillis(),
+    val isDateUnknown: Boolean = false,
     val kmText: String = "",
     val costText: String = "",
     val description: String = "",
@@ -68,6 +69,7 @@ class RecordViewModel @Inject constructor(
 
             var selectedItem: MaintenanceItem? = null
             var defaultDate = System.currentTimeMillis()
+            var isDateUnknown = false
             var defaultKm = vehicle?.currentKm?.toString() ?: ""
             var desc = ""
             var parts = ""
@@ -79,7 +81,12 @@ class RecordViewModel @Inject constructor(
                 val record = maintenanceRepository.getRecordById(recordId)
                 if (record != null) {
                     selectedItem = items.find { it.id == record.itemId }
-                    defaultDate = record.date
+                    if (record.date != null) {
+                        defaultDate = record.date
+                        isDateUnknown = false
+                    } else {
+                        isDateUnknown = true
+                    }
                     defaultKm = record.km.toString()
                     cost = record.cost?.toString() ?: ""
                     desc = record.description
@@ -126,6 +133,7 @@ class RecordViewModel @Inject constructor(
                     items = items,
                     selectedItem = item,
                     date = defaultDate,
+                    isDateUnknown = isDateUnknown,
                     kmText = defaultKm,
                     costText = cost,
                     description = desc,
@@ -177,6 +185,26 @@ class RecordViewModel @Inject constructor(
                 JalaliDateUtil.addMonthsToTimestamp(timestamp, months)
             } ?: state.nextDate
             state.copy(date = timestamp, nextDate = updatedNextDate)
+        }
+    }
+
+    fun onToggleDateUnknown(unknown: Boolean) {
+        _uiState.update { state ->
+            val updatedMode = if (unknown && state.nextScheduleMode == NextScheduleMode.BOTH) {
+                NextScheduleMode.ONLY_KM
+            } else if (unknown && state.nextScheduleMode == NextScheduleMode.ONLY_DATE) {
+                NextScheduleMode.NONE
+            } else state.nextScheduleMode
+
+            val updatedNextDate = if (unknown) null else state.selectedItem?.intervalMonths?.let { months ->
+                JalaliDateUtil.addMonthsToTimestamp(state.date, months)
+            } ?: state.nextDate
+
+            state.copy(
+                isDateUnknown = unknown,
+                nextScheduleMode = updatedMode,
+                nextDate = updatedNextDate
+            )
         }
     }
 
@@ -239,7 +267,7 @@ class RecordViewModel @Inject constructor(
                 val record = MaintenanceRecord(
                     id = recordId ?: 0L,
                     itemId = item.id,
-                    date = state.date,
+                    date = if (state.isDateUnknown) null else state.date,
                     km = km,
                     cost = cost,
                     description = state.description.trim(),

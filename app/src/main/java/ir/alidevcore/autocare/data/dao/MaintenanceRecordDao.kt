@@ -6,14 +6,14 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface MaintenanceRecordDao {
-    @Query("SELECT * FROM maintenance_records WHERE itemId = :itemId ORDER BY date DESC")
+    @Query("SELECT * FROM maintenance_records WHERE itemId = :itemId ORDER BY km DESC, COALESCE(date, 0) DESC, id DESC")
     fun getRecordsForItem(itemId: Long): Flow<List<MaintenanceRecord>>
 
     @Query("""
         SELECT r.* FROM maintenance_records r
         INNER JOIN maintenance_items i ON r.itemId = i.id
         WHERE i.vehicleId = :vehicleId
-        ORDER BY r.date DESC
+        ORDER BY r.km DESC, COALESCE(r.date, 0) DESC, r.id DESC
     """)
     fun getRecordsForVehicle(vehicleId: Long): Flow<List<MaintenanceRecord>>
 
@@ -21,7 +21,7 @@ interface MaintenanceRecordDao {
         SELECT r.* FROM maintenance_records r
         INNER JOIN maintenance_items i ON r.itemId = i.id
         WHERE i.vehicleId = :vehicleId
-        ORDER BY r.date DESC
+        ORDER BY r.km DESC, COALESCE(r.date, 0) DESC, r.id DESC
         LIMIT :limit
     """)
     fun getRecentRecordsForVehicle(vehicleId: Long, limit: Int = 10): Flow<List<MaintenanceRecord>>
@@ -29,11 +29,14 @@ interface MaintenanceRecordDao {
     @Query("SELECT * FROM maintenance_records WHERE id = :id")
     suspend fun getRecordById(id: Long): MaintenanceRecord?
 
-    @Query("SELECT * FROM maintenance_records WHERE itemId = :itemId ORDER BY date DESC LIMIT 1")
+    @Query("SELECT * FROM maintenance_records WHERE itemId = :itemId ORDER BY km DESC, COALESCE(date, 0) DESC, id DESC LIMIT 1")
     suspend fun getLastRecordForItem(itemId: Long): MaintenanceRecord?
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertRecord(record: MaintenanceRecord): Long
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertRecords(records: List<MaintenanceRecord>): List<Long>
 
     @Update
     suspend fun updateRecord(record: MaintenanceRecord)
@@ -45,8 +48,9 @@ interface MaintenanceRecordDao {
         SELECT r.* FROM maintenance_records r
         INNER JOIN maintenance_items i ON r.itemId = i.id
         WHERE i.vehicleId = :vehicleId
+        AND r.date IS NOT NULL
         AND r.date >= :fromDate AND r.date <= :toDate
-        ORDER BY r.date DESC
+        ORDER BY r.date DESC, r.km DESC
     """)
     fun getRecordsForVehicleInDateRange(vehicleId: Long, fromDate: Long, toDate: Long): Flow<List<MaintenanceRecord>>
 
@@ -54,9 +58,17 @@ interface MaintenanceRecordDao {
         SELECT COALESCE(SUM(cost), 0) FROM maintenance_records r
         INNER JOIN maintenance_items i ON r.itemId = i.id
         WHERE i.vehicleId = :vehicleId AND r.cost IS NOT NULL
+        AND r.date IS NOT NULL
         AND r.date >= :fromDate AND r.date <= :toDate
     """)
     suspend fun getTotalCostForVehicleInRange(vehicleId: Long, fromDate: Long, toDate: Long): Long
+
+    @Query("""
+        SELECT COALESCE(SUM(cost), 0) FROM maintenance_records r
+        INNER JOIN maintenance_items i ON r.itemId = i.id
+        WHERE i.vehicleId = :vehicleId AND r.cost IS NOT NULL
+    """)
+    suspend fun getTotalCostForVehicleAllTime(vehicleId: Long): Long
 
     @Query("""
         SELECT r.* FROM maintenance_records r
@@ -66,11 +78,11 @@ interface MaintenanceRecordDao {
         AND (:category = '' OR i.category = :category)
         AND (:fromKm = -1 OR r.km >= :fromKm)
         AND (:toKm = -1 OR r.km <= :toKm)
-        AND (:fromDate = -1 OR r.date >= :fromDate)
-        AND (:toDate = -1 OR r.date <= :toDate)
+        AND (:fromDate = -1 OR (r.date IS NOT NULL AND r.date >= :fromDate))
+        AND (:toDate = -1 OR (r.date IS NOT NULL AND r.date <= :toDate))
         AND (:fromCost = -1 OR (r.cost IS NOT NULL AND r.cost >= :fromCost))
         AND (:toCost = -1 OR (r.cost IS NOT NULL AND r.cost <= :toCost))
-        ORDER BY r.date DESC
+        ORDER BY r.km DESC, COALESCE(r.date, 0) DESC
     """)
     fun searchRecords(
         vehicleId: Long,
@@ -91,7 +103,7 @@ interface MaintenanceRecordDao {
                COUNT(*) as recordCount
         FROM maintenance_records r
         INNER JOIN maintenance_items i ON r.itemId = i.id
-        WHERE i.vehicleId = :vehicleId AND r.cost IS NOT NULL
+        WHERE i.vehicleId = :vehicleId AND r.cost IS NOT NULL AND r.date IS NOT NULL
         AND r.date >= :fromDate AND r.date <= :toDate
         GROUP BY month
         ORDER BY month
@@ -104,7 +116,7 @@ interface MaintenanceRecordDao {
                COUNT(*) as recordCount
         FROM maintenance_records r
         INNER JOIN maintenance_items i ON r.itemId = i.id
-        WHERE i.vehicleId = :vehicleId AND r.cost IS NOT NULL
+        WHERE i.vehicleId = :vehicleId AND r.cost IS NOT NULL AND r.date IS NOT NULL
         AND r.date >= :fromDate AND r.date <= :toDate
         GROUP BY i.category
         ORDER BY totalCost DESC

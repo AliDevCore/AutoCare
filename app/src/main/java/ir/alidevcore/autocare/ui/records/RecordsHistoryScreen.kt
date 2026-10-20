@@ -29,7 +29,8 @@ fun RecordsHistoryScreen(
     viewModel: RecordsHistoryViewModel,
     onNavigateBack: () -> Unit,
     onEditRecord: (recordId: Long) -> Unit,
-    onAddNewRecord: () -> Unit
+    onAddNewRecord: () -> Unit,
+    onBulkRecord: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var recordToDelete by remember { mutableStateOf<MaintenanceRecord?>(null) }
@@ -139,6 +140,9 @@ fun RecordsHistoryScreen(
                 title = uiState.filterItemName?.let { "سوابق «$it»" } ?: "تاریخچه و سوابق سرویس‌ها",
                 onNavigateBack = onNavigateBack,
                 actions = {
+                    IconButton(onClick = onBulkRecord) {
+                        Icon(Icons.Default.PlaylistAdd, contentDescription = "ثبت دسته‌جمعی سوابق")
+                    }
                     Box {
                         IconButton(onClick = { sortMenuExpanded = true }) {
                             Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "مرتب‌سازی")
@@ -427,8 +431,11 @@ fun RecordDetailCard(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(Modifier.width(4.dp))
+                    val dateText = recordInfo.record.date?.let {
+                        JalaliDateUtil.timestampToJalaliStringWithMonthName(it)
+                    } ?: "تاریخ نامشخص (فقط کارکرد)"
                     Text(
-                        text = JalaliDateUtil.timestampToJalaliStringWithMonthName(recordInfo.record.date),
+                        text = dateText,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface
                     )
