@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">اتوکِر | مدیریت نگهداری خودرو</string>
+    <string name="vehicles_title">خودروهای من</string>
+    <string name="add_vehicle">افزودن خودرو جدید</string>
+    <string name="edit_vehicle">ویرایش خودرو</string>
+    <string name="delete_vehicle">حذف خودرو</string>
+    <string name="vehicle_name">نام خودرو</string>
+    <string name="current_km">کیلومتر فعلی</string>
+    <string name="vehicle_year">سال ساخت (اختیاری)</string>
+    <string name="save">ذخیره</string>
+    <string name="cancel">انصراف</string>
+    <string name="confirm">تأیید</string>
+    <string name="delete">حذف</string>
+    <string name="dashboard">داشبورد</string>
+    <string name="services">سرویس‌ها</string>
+    <string name="records">سوابق</string>
+    <string name="expenses">هزینه‌ها</string>
+    <string name="export">خروجی</string>
+</resources>
