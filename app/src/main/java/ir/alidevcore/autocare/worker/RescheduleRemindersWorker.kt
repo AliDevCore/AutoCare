@@ -6,6 +6,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import ir.alidevcore.autocare.data.model.PlanStatus
 import ir.alidevcore.autocare.data.repository.MaintenanceRepository
 import ir.alidevcore.autocare.data.repository.ReminderRepository
 import ir.alidevcore.autocare.data.repository.VehicleRepository
@@ -24,15 +25,36 @@ class RescheduleRemindersWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         return try {
             val allReminders = reminderRepository.getAllReminders()
-            for (reminder in allReminders) {
-                if (!reminder.isEnabled) continue
-                val plan = maintenanceRepository.getServiceById(reminder.plannedServiceId) ?: continue
-                val targetDate = plan.targetDate ?: continue
-                val item = maintenanceRepository.getItemByIdOnce(plan.itemId) ?: continue
-                val vehicle = vehicleRepository.getVehicleByIdOnce(plan.vehicleId) ?: continue
+            val now = System.currentTimeMillis()
 
+            for (reminder in allReminders) {
+                // If reminder disabled, cancel any existing system alarm
+                if (!reminder.isEnabled) {
+                    reminderScheduler.cancelReminder(reminder.notificationId)
+                    continue
+                }
+
+                val plan = maintenanceRepository.getServiceById(reminder.plannedServiceId)
+                // If plan deleted, completed, cancelled, or missing targetDate, cancel alarm
+                if (plan == null || plan.status != PlanStatus.PENDING || plan.targetDate == null) {
+                    reminderScheduler.cancelReminder(reminder.notificationId)
+                    continue
+                }
+
+                val targetDate = plan.targetDate
                 val triggerTime = reminderScheduler.computeTriggerTime(targetDate, reminder.daysBefore)
-                if (triggerTime > System.currentTimeMillis()) {
+
+                // If trigger time has already passed, cancel any pending alarm so it doesn't fire erroneously
+                if (triggerTime <= now) {
+                    reminderScheduler.cancelReminder(reminder.notificationId)
+                    continue
+                }
+
+                val item = maintenanceRepository.getItemByIdOnce(plan.itemId)
+                val vehicle = vehicleRepository.getVehicleByIdOnce(plan.vehicleId)
+
+                if (item != null && vehicle != null) {
+                    // Schedules or idempotently updates existing alarm with FLAG_UPDATE_CURRENT
                     reminderScheduler.scheduleReminder(
                         notificationId = reminder.notificationId,
                         triggerAtMs = triggerTime,

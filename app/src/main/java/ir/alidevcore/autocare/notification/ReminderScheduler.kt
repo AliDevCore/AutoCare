@@ -15,9 +15,23 @@ class ReminderScheduler(private val context: Context) {
         const val EXTRA_SERVICE_NAME = "service_name"
         const val EXTRA_VEHICLE_ID = "vehicle_id"
         const val EXTRA_DAYS_UNTIL = "days_until"
+
+        /**
+         * Computes trigger time for a reminder at 9:00 AM on the specified days before target date
+         */
+        fun computeTriggerTime(targetDateMs: Long, daysBefore: Int): Long {
+            val cal = java.util.Calendar.getInstance()
+            cal.timeInMillis = targetDateMs
+            cal.add(java.util.Calendar.DAY_OF_YEAR, -daysBefore)
+            cal.set(java.util.Calendar.HOUR_OF_DAY, 9) // 9 AM
+            cal.set(java.util.Calendar.MINUTE, 0)
+            cal.set(java.util.Calendar.SECOND, 0)
+            cal.set(java.util.Calendar.MILLISECOND, 0)
+            return cal.timeInMillis
+        }
     }
 
-    private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+    private val alarmManager by lazy { context.getSystemService(Context.ALARM_SERVICE) as AlarmManager }
 
     fun scheduleReminder(
         notificationId: Int,
@@ -89,14 +103,6 @@ class ReminderScheduler(private val context: Context) {
     /**
      * Computes trigger time for a reminder based on target date and days before
      */
-    fun computeTriggerTime(targetDateMs: Long, daysBefore: Int): Long {
-        val cal = java.util.Calendar.getInstance()
-        cal.timeInMillis = targetDateMs
-        cal.add(java.util.Calendar.DAY_OF_YEAR, -daysBefore)
-        cal.set(java.util.Calendar.HOUR_OF_DAY, 9) // 9 AM
-        cal.set(java.util.Calendar.MINUTE, 0)
-        cal.set(java.util.Calendar.SECOND, 0)
-        cal.set(java.util.Calendar.MILLISECOND, 0)
-        return cal.timeInMillis
-    }
+    fun computeTriggerTime(targetDateMs: Long, daysBefore: Int): Long =
+        Companion.computeTriggerTime(targetDateMs, daysBefore)
 }

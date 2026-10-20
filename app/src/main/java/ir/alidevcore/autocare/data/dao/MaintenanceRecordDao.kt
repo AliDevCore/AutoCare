@@ -6,22 +6,32 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface MaintenanceRecordDao {
-    @Query("SELECT * FROM maintenance_records WHERE itemId = :itemId ORDER BY km DESC, COALESCE(date, 0) DESC, id DESC")
+    /**
+     * Returns records for a specific maintenance item ordered chronologically (newest date first, then km, then id).
+     */
+    @Query("SELECT * FROM maintenance_records WHERE itemId = :itemId ORDER BY COALESCE(date, 0) DESC, km DESC, id DESC")
     fun getRecordsForItem(itemId: Long): Flow<List<MaintenanceRecord>>
 
+    /**
+     * Returns all records for a vehicle ordered chronologically (newest date first, then km, then id).
+     */
     @Query("""
         SELECT r.* FROM maintenance_records r
         INNER JOIN maintenance_items i ON r.itemId = i.id
         WHERE i.vehicleId = :vehicleId
-        ORDER BY r.km DESC, COALESCE(r.date, 0) DESC, r.id DESC
+        ORDER BY COALESCE(r.date, 0) DESC, r.km DESC, r.id DESC
     """)
     fun getRecordsForVehicle(vehicleId: Long): Flow<List<MaintenanceRecord>>
 
+    /**
+     * Returns recent maintenance records for a vehicle ordered by service date descending (newest to oldest).
+     * For identical dates, uses km DESC and id DESC as deterministic tie-breakers.
+     */
     @Query("""
         SELECT r.* FROM maintenance_records r
         INNER JOIN maintenance_items i ON r.itemId = i.id
         WHERE i.vehicleId = :vehicleId
-        ORDER BY r.km DESC, COALESCE(r.date, 0) DESC, r.id DESC
+        ORDER BY COALESCE(r.date, 0) DESC, r.km DESC, r.id DESC
         LIMIT :limit
     """)
     fun getRecentRecordsForVehicle(vehicleId: Long, limit: Int = 10): Flow<List<MaintenanceRecord>>
@@ -29,6 +39,23 @@ interface MaintenanceRecordDao {
     @Query("SELECT * FROM maintenance_records WHERE id = :id")
     suspend fun getRecordById(id: Long): MaintenanceRecord?
 
+    /**
+     * Returns the latest record for an item ordered primarily by highest KM.
+     * Crucial for technical mileage calculations (e.g. lastRecord.km + intervalKm).
+     */
+    @Query("SELECT * FROM maintenance_records WHERE itemId = :itemId ORDER BY km DESC, COALESCE(date, 0) DESC, id DESC LIMIT 1")
+    suspend fun getLastRecordForItemByKm(itemId: Long): MaintenanceRecord?
+
+    /**
+     * Returns the latest record for an item ordered primarily by latest Date.
+     * Used for date interval calculations (e.g. lastRecord.date + intervalMonths).
+     */
+    @Query("SELECT * FROM maintenance_records WHERE itemId = :itemId ORDER BY COALESCE(date, 0) DESC, km DESC, id DESC LIMIT 1")
+    suspend fun getLastRecordForItemByDate(itemId: Long): MaintenanceRecord?
+
+    /**
+     * Default technical lookup: orders by highest KM for technical interval and overdue calculations.
+     */
     @Query("SELECT * FROM maintenance_records WHERE itemId = :itemId ORDER BY km DESC, COALESCE(date, 0) DESC, id DESC LIMIT 1")
     suspend fun getLastRecordForItem(itemId: Long): MaintenanceRecord?
 

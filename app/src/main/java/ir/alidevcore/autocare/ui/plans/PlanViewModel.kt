@@ -195,6 +195,24 @@ class PlanViewModel @Inject constructor(
         }
     }
 
+    fun deletePlan() {
+        val id = planId ?: return
+        viewModelScope.launch {
+            try {
+                val oldReminders = reminderRepository.getRemindersForServiceOnce(id)
+                oldReminders.forEach { reminderScheduler.cancelReminder(it.notificationId) }
+                reminderRepository.deleteRemindersForService(id)
+                val plan = maintenanceRepository.getServiceById(id)
+                if (plan != null) {
+                    maintenanceRepository.deletePlannedService(plan)
+                }
+                _uiState.update { it.copy(isSaved = true) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "خطا در حذف برنامه: ${e.message}") }
+            }
+        }
+    }
+
     fun clearError() {
         _uiState.update { it.copy(error = null) }
     }

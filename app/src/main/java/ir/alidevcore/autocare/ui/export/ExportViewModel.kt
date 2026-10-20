@@ -5,8 +5,10 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import ir.alidevcore.autocare.data.model.ReminderSetting
 import ir.alidevcore.autocare.data.model.Vehicle
 import ir.alidevcore.autocare.data.repository.MaintenanceRepository
+import ir.alidevcore.autocare.data.repository.ReminderRepository
 import ir.alidevcore.autocare.data.repository.VehicleRepository
 import ir.alidevcore.autocare.util.ExcelExporter
 import kotlinx.coroutines.Dispatchers
@@ -29,6 +31,7 @@ data class ExportUiState(
 class ExportViewModel @Inject constructor(
     private val vehicleRepository: VehicleRepository,
     private val maintenanceRepository: MaintenanceRepository,
+    private val reminderRepository: ReminderRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -116,11 +119,21 @@ class ExportViewModel @Inject constructor(
             Pair(p, itemName)
         }
 
+        val reminderPairs = mutableListOf<Pair<ReminderSetting, String>>()
+        plans.forEach { p ->
+            val itemName = items.find { it.id == p.itemId }?.name ?: "سایر"
+            val rems = reminderRepository.getRemindersForServiceOnce(p.id)
+            rems.forEach { reminder ->
+                reminderPairs.add(Pair(reminder, itemName))
+            }
+        }
+
         return ExcelExporter.VehicleExportData(
             vehicle = v,
             items = items,
             records = recordPairs,
-            plans = planPairs
+            plans = planPairs,
+            reminders = reminderPairs
         )
     }
 

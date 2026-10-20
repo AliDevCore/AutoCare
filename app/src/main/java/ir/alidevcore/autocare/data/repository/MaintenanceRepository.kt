@@ -67,6 +67,12 @@ class MaintenanceRepository @Inject constructor(
     suspend fun getLastRecordForItem(itemId: Long): MaintenanceRecord? =
         recordDao.getLastRecordForItem(itemId)
 
+    suspend fun getLastRecordForItemByKm(itemId: Long): MaintenanceRecord? =
+        recordDao.getLastRecordForItemByKm(itemId)
+
+    suspend fun getLastRecordForItemByDate(itemId: Long): MaintenanceRecord? =
+        recordDao.getLastRecordForItemByDate(itemId)
+
     suspend fun insertRecord(record: MaintenanceRecord): Long = recordDao.insertRecord(record)
 
     suspend fun insertRecords(records: List<MaintenanceRecord>): List<Long> = recordDao.insertRecords(records)
@@ -165,34 +171,31 @@ class MaintenanceRepository @Inject constructor(
         val serviceByItem: Map<Long, PlannedService> = pendingServices
             .groupBy { it.itemId }
             .mapValues { (_, services) ->
-                services.minWithOrNull(
-                    compareBy<PlannedService> { plan ->
-                        // 1. Overdue plans get highest priority
-                        val isKmOverdue = plan.targetKm != null && currentKm >= plan.targetKm
-                        val isDateOverdue = plan.targetDate != null && now >= plan.targetDate
-                        if (isKmOverdue || isDateOverdue) 0 else 1
-                    }.thenBy { plan ->
-                        // 2. Urgent target kilometers
-                        plan.targetKm?.let { (it - currentKm).coerceAtLeast(0) } ?: Long.MAX_VALUE
-                    }.thenBy { plan ->
-                        // 3. Urgent target dates
-                        plan.targetDate?.let { (it - now).coerceAtLeast(0) } ?: Long.MAX_VALUE
-                    }
+                ir.alidevcore.autocare.util.ServiceStatusUtil.findRepresentativePlan(
+                    services = services,
+                    currentKm = currentKm,
+                    now = now,
+                    kmThreshold = kmThreshold,
+                    daysThreshold = daysThreshold
                 )!!
             }
 
         return items
             .map { item ->
-                val lastRecord: MaintenanceRecord? = recordDao.getLastRecordForItem(item.id)
+                val lastRecordByKm: MaintenanceRecord? = recordDao.getLastRecordForItemByKm(item.id)
+                val lastDateRecord: MaintenanceRecord? = if (lastRecordByKm?.date == null) {
+                    recordDao.getLastRecordForItemByDate(item.id)
+                } else null
                 val plan: PlannedService? = serviceByItem[item.id]
 
                 ir.alidevcore.autocare.util.ServiceStatusUtil.buildItemWithLastRecord(
                     item = item,
-                    lastRecord = lastRecord,
+                    lastRecord = lastRecordByKm,
                     pendingPlan = plan,
                     currentKm = currentKm,
                     kmThreshold = kmThreshold,
-                    daysThreshold = daysThreshold
+                    daysThreshold = daysThreshold,
+                    lastDateRecord = lastDateRecord
                 )
             }
             .sortedWith(

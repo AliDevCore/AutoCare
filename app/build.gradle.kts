@@ -14,8 +14,9 @@ android {
         applicationId = "ir.alidevcore.autocare"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        val runNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
+        versionCode = runNumber
+        versionName = "1.0.$runNumber"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -31,20 +32,20 @@ android {
 
     signingConfigs {
         create("release") {
-            val keystoreFile = file("release.keystore")
+            val keystorePath = System.getenv("KEYSTORE_PATH") ?: "release.keystore"
+            val keystoreFile = file(keystorePath)
             val keystorePassword = System.getenv("KEYSTORE_PASSWORD")
             val keyAliasEnv = System.getenv("KEY_ALIAS")
             val keyPasswordEnv = System.getenv("KEY_PASSWORD")
 
-            if (keystoreFile.exists() && keystorePassword != null) {
+            if (keystoreFile.exists() && !keystorePassword.isNullOrBlank()) {
                 storeFile = keystoreFile
                 storePassword = keystorePassword
                 keyAlias = keyAliasEnv ?: "autocare"
                 keyPassword = keyPasswordEnv ?: keystorePassword
-            } else {
-                // Development fallback: Use debug signing for seamless personal testing without secrets setup
-                initWith(getByName("debug"))
             }
+            // CRITICAL SECURITY: Debug signing fallback is strictly removed.
+            // If the keystore or passwords are missing, building Release will halt.
         }
     }
 
@@ -148,4 +149,28 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
+}
+
+// CRITICAL SECURITY ENFORCEMENT:
+// Release APKs MUST have a valid dedicated signing key. Fallback to debug key is strictly prohibited.
+gradle.taskGraph.whenReady {
+    val isReleaseBuild = allTasks.any { task ->
+        task.name.contains("Release", ignoreCase = true) &&
+        (task.name.startsWith("assemble") || task.name.startsWith("bundle") || task.name.startsWith("package"))
+    }
+    if (isReleaseBuild) {
+        val keystorePath = System.getenv("KEYSTORE_PATH") ?: "release.keystore"
+        val keystoreFile = file(keystorePath)
+        val keystorePassword = System.getenv("KEYSTORE_PASSWORD")
+        val keyAliasEnv = System.getenv("KEY_ALIAS")
+        if (!keystoreFile.exists() || keystorePassword.isNullOrBlank() || keyAliasEnv.isNullOrBlank()) {
+            throw GradleException(
+                "❌ خطای بحرانی ساخت نسخه Release:\n" +
+                "فایل Keystore اختصاصی یا متغیرهای محیطی KEYSTORE_PASSWORD و KEY_ALIAS یافت نشدند.\n" +
+                "طبق الزامات امنیتی، نسخه Release هرگز نباید بدون امضای اختصاصی یا با کلید Debug ساخته شود.\n" +
+                "مسیر بررسی شده: ${keystoreFile.absolutePath}\n" +
+                "برای ساخت نسخه تستی شخصی از دستور './gradlew assembleDebug' استفاده کنید."
+            )
+        }
+    }
 }
