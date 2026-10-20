@@ -49,6 +49,7 @@ jobs:
           fi
 
       - name: 🚀 Build Release APK
+        if: env.HAS_KEYSTORE == 'true'
         env:
           KEYSTORE_PATH: /tmp/release.keystore
           KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
@@ -81,6 +82,7 @@ jobs:
           retention-days: 14
 
       - name: 📤 Upload Release APK Artifact
+        if: env.HAS_KEYSTORE == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: AutoCare-Release-APK
@@ -101,12 +103,9 @@ jobs:
           tag_name: "v1.0.${{ github.run_number }}"
           name: "نسخه رسمی AutoCare v1.0.${{ github.run_number }}"
           body: |
-            ### 🚗 دانلود مستقیم نسخه نهایی اپلیکیشن AutoCare
-            - **AutoCare-Release.apk**: نسخه نهایی، بهینه‌شده و آماده نصب مستقیم روی هر گوشی اندروید
-            - **AutoCare-Debug.apk**: نسخه تست و دیباگ
+            ### 🚗 دانلود مستقیم نسخه اپلیکیشن AutoCare
+            - فایل‌های نصبی تولیدشده در این نسخه در پیوست قرار دارند.
           draft: false
           prerelease: false
           make_latest: true
-          files: |
-            output_apks/AutoCare-Release.apk
-            output_apks/AutoCare-Debug.apk
+          files: output_apks/*.apk
