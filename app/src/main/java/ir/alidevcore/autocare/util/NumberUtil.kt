@@ -35,4 +35,16 @@ object NumberUtil {
     fun formatNumber(n: Long): String {
         return NumberFormat.getNumberInstance(Locale("fa", "IR")).format(n)
     }
+
+    fun toPersianDigits(number: Int): String = toPersianDigits(number.toString())
+
+    fun toPersianDigits(number: Long): String = toPersianDigits(number.toString())
+
+    fun toPersianDigits(str: String): String {
+        return str
+            .replace('0', '۰').replace('1', '۱').replace('2', '۲')
+            .replace('3', '۳').replace('۴', '۴').replace('۵', '۵')
+            .replace('6', '۶').replace('7', '۷').replace('8', '۸')
+            .replace('9', '۹')
+    }
 }

@@ -8,7 +8,13 @@ import ir.alidevcore.autocare.data.model.MaintenanceItem
 import ir.alidevcore.autocare.data.model.MaintenanceRecord
 import ir.alidevcore.autocare.data.model.PlannedService
 import ir.alidevcore.autocare.data.model.Vehicle
-import org.apache.poi.ss.usermodel.*
+import org.apache.poi.ss.usermodel.BorderStyle
+import org.apache.poi.ss.usermodel.FillPatternType
+import org.apache.poi.ss.usermodel.HorizontalAlignment
+import org.apache.poi.ss.usermodel.IndexedColors
+import org.apache.poi.ss.usermodel.Sheet
+import org.apache.poi.ss.usermodel.VerticalAlignment
+import org.apache.poi.xssf.usermodel.XSSFCellStyle
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.io.File
 import java.io.FileOutputStream
@@ -228,9 +234,9 @@ object ExcelExporter {
     private fun createVehicleInfoSheet(
         sheet: Sheet,
         vehicle: Vehicle,
-        headerStyle: CellStyle,
-        dataStyle: CellStyle,
-        boldStyle: CellStyle
+        headerStyle: XSSFCellStyle,
+        dataStyle: XSSFCellStyle,
+        boldStyle: XSSFCellStyle
     ) {
         val titleRow = sheet.createRow(0)
         val titleCell = titleRow.createCell(0)
@@ -263,8 +269,8 @@ object ExcelExporter {
     private fun createRecordsSheet(
         sheet: Sheet,
         records: List<Pair<MaintenanceRecord, String>>,
-        headerStyle: CellStyle,
-        dataStyle: CellStyle
+        headerStyle: XSSFCellStyle,
+        dataStyle: XSSFCellStyle
     ) {
         val headers = listOf("ردیف", "نام سرویس / قطعه", "تاریخ انجام (شمسی)", "کیلومتر", "هزینه (تومان)", "توضیحات", "قطعات و مواد مصرفی", "تعمیرگاه")
         val headerRow = sheet.createRow(0)
@@ -293,8 +299,8 @@ object ExcelExporter {
     private fun createPlansSheet(
         sheet: Sheet,
         plans: List<Pair<PlannedService, String>>,
-        headerStyle: CellStyle,
-        dataStyle: CellStyle
+        headerStyle: XSSFCellStyle,
+        dataStyle: XSSFCellStyle
     ) {
         val headers = listOf("ردیف", "نام سرویس", "کیلومتر هدف", "تاریخ هدف (شمسی)", "وضعیت", "توضیحات")
         val headerRow = sheet.createRow(0)
@@ -326,8 +332,8 @@ object ExcelExporter {
     private fun createItemsSheet(
         sheet: Sheet,
         items: List<MaintenanceItem>,
-        headerStyle: CellStyle,
-        dataStyle: CellStyle
+        headerStyle: XSSFCellStyle,
+        dataStyle: XSSFCellStyle
     ) {
         val headers = listOf("ردیف", "نام قطعه / سرویس", "دسته‌بندی", "فاصله کیلومتری", "فاصله زمانی (ماه)", "وضعیت", "توضیحات")
         val headerRow = sheet.createRow(0)
@@ -352,7 +358,7 @@ object ExcelExporter {
         for (i in headers.indices) sheet.autoSizeColumn(i)
     }
 
-    private fun createHeaderStyle(workbook: Workbook): CellStyle {
+    private fun createHeaderStyle(workbook: XSSFWorkbook): XSSFCellStyle {
         val style = workbook.createCellStyle()
         val font = workbook.createFont().apply {
             bold = true
@@ -367,7 +373,7 @@ object ExcelExporter {
         return style
     }
 
-    private fun createDataStyle(workbook: Workbook): CellStyle {
+    private fun createDataStyle(workbook: XSSFWorkbook): XSSFCellStyle {
         val style = workbook.createCellStyle()
         style.alignment = HorizontalAlignment.RIGHT
         style.verticalAlignment = VerticalAlignment.CENTER
@@ -375,7 +381,7 @@ object ExcelExporter {
         return style
     }
 
-    private fun createBoldStyle(workbook: Workbook): CellStyle {
+    private fun createBoldStyle(workbook: XSSFWorkbook): XSSFCellStyle {
         val style = workbook.createCellStyle()
         val font = workbook.createFont().apply {
             bold = true
@@ -385,7 +391,7 @@ object ExcelExporter {
         return style
     }
 
-    private fun setBorders(style: CellStyle) {
+    private fun setBorders(style: XSSFCellStyle) {
         style.borderTop = BorderStyle.THIN
         style.borderBottom = BorderStyle.THIN
         style.borderLeft = BorderStyle.THIN
