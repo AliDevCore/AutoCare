@@ -26,8 +26,6 @@ import ir.alidevcore.autocare.ui.dashboard.DashboardScreen
 import ir.alidevcore.autocare.ui.dashboard.DashboardViewModel
 import ir.alidevcore.autocare.ui.expenses.ExpensesReportScreen
 import ir.alidevcore.autocare.ui.expenses.ExpensesViewModel
-import ir.alidevcore.autocare.ui.export.ExportScreen
-import ir.alidevcore.autocare.ui.export.ExportViewModel
 import ir.alidevcore.autocare.ui.items.ItemViewModel
 import ir.alidevcore.autocare.ui.items.MaintenanceItemsScreen
 import ir.alidevcore.autocare.ui.navigation.Screen
@@ -121,9 +119,6 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onNavigateToExpenses = {
                                         navController.navigate(Screen.ExpensesReport.createRoute(vehicleId))
-                                    },
-                                    onNavigateToExport = {
-                                        navController.navigate(Screen.ExportData.createRoute(vehicleId))
                                     },
                                     onNavigateToBulkRecord = { itemId ->
                                         navController.navigate(Screen.BulkRecord.createRoute(vehicleId, itemId = itemId))
@@ -227,19 +222,7 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
 
-                            // 8. Export Screen
-                            composable(
-                                route = Screen.ExportData.route,
-                                arguments = listOf(navArgument("vehicleId") { type = NavType.LongType })
-                            ) {
-                                val viewModel: ExportViewModel = hiltViewModel()
-                                ExportScreen(
-                                    viewModel = viewModel,
-                                    onNavigateBack = { navController.popBackStack() }
-                                )
-                            }
-
-                            // 9. Bulk Historical Records Screen
+                            // 8. Bulk Historical Records Screen
                             composable(
                                 route = Screen.BulkRecord.route,
                                 arguments = listOf(

@@ -1,9 +1,12 @@
 package ir.alidevcore.autocare.ui.dashboard
 
+import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import ir.alidevcore.autocare.data.backup.BackupStats
+import ir.alidevcore.autocare.data.backup.DatabaseBackupManager
 import ir.alidevcore.autocare.data.model.MaintenanceRecord
 import ir.alidevcore.autocare.data.model.PlannedService
 import ir.alidevcore.autocare.data.model.Vehicle
@@ -14,6 +17,7 @@ import ir.alidevcore.autocare.data.repository.VehicleRepository
 import ir.alidevcore.autocare.util.JalaliDateUtil
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.io.File
 import javax.inject.Inject
 
 data class DashboardUiState(
@@ -21,7 +25,7 @@ data class DashboardUiState(
     val overdueItems: List<ItemWithLastRecord> = emptyList(),
     val upcomingItems: List<ItemWithLastRecord> = emptyList(),
     val recentRecords: List<RecordDisplay> = emptyList(),
-    val pendingPlans: List<PlannedService> = emptyList(),
+    val pendingPlans: List<PlannedServiceDisplay> = emptyList(),
     val monthlyTotal: Long = 0L,
     val isLoading: Boolean = true,
     val error: String? = null,
@@ -34,10 +38,16 @@ data class RecordDisplay(
     val dateDisplay: String
 )
 
+data class PlannedServiceDisplay(
+    val plan: PlannedService,
+    val itemName: String
+)
+
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     private val vehicleRepository: VehicleRepository,
     private val maintenanceRepository: MaintenanceRepository,
+    private val backupManager: DatabaseBackupManager,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -75,8 +85,18 @@ class DashboardViewModel @Inject constructor(
                             )
                         }
 
-                    // Get pending plans
-                    val pendingPlans = maintenanceRepository.getPendingServicesForVehicle(vehicle.id).first()
+                    // Get pending plans with item names
+                    val pendingPlans = mutableListOf<PlannedServiceDisplay>()
+                    maintenanceRepository.getPendingServicesForVehicle(vehicle.id).first()
+                        .forEach { plan ->
+                            val item = maintenanceRepository.getItemByIdOnce(plan.itemId)
+                            pendingPlans.add(
+                                PlannedServiceDisplay(
+                                    plan = plan,
+                                    itemName = item?.name ?: "سرویس دوره‌ای"
+                                )
+                            )
+                        }
 
                     // Monthly cost
                     val now = System.currentTimeMillis()
@@ -98,6 +118,28 @@ class DashboardViewModel @Inject constructor(
                         )
                     }
                 }
+        }
+    }
+
+    fun exportDatabase(onSuccess: (File) -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val file = backupManager.exportDatabase()
+                backupManager.shareBackupFile(file)
+                onSuccess(file)
+            } catch (e: Exception) {
+                onError("خطا در پشتیبان‌گیری: ${e.message}")
+            }
+        }
+    }
+
+    fun importDatabase(uri: Uri, onSuccess: (BackupStats) -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            val result = backupManager.importDatabaseFromUri(uri)
+            result.fold(
+                onSuccess = { stats -> onSuccess(stats) },
+                onFailure = { error -> onError(error.message ?: "خطا در بازیابی دیتابیس") }
+            )
         }
     }
 

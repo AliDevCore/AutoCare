@@ -137,6 +137,12 @@ interface MaintenanceRecordDao {
     """)
     suspend fun getMonthlyCostSummary(vehicleId: Long, fromDate: Long, toDate: Long): List<MonthlyCost>
 
+    @Query("SELECT * FROM maintenance_records ORDER BY id ASC")
+    suspend fun getAllRecordsList(): List<MaintenanceRecord>
+
+    @Query("DELETE FROM maintenance_records")
+    suspend fun deleteAllRecords()
+
     @Query("""
         SELECT i.category,
                SUM(r.cost) as totalCost,

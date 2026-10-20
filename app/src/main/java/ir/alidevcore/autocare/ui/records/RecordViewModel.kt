@@ -308,7 +308,7 @@ class RecordViewModel @Inject constructor(
                             vehicleId = vehicleId,
                             targetKm = nextKmVal,
                             targetDate = nextDateVal,
-                            notes = "محاسبه خودکار از سرویس قبلی (${item.name})"
+                            notes = ""
                         )
                         maintenanceRepository.insertPlannedService(nextPlan)
                     }

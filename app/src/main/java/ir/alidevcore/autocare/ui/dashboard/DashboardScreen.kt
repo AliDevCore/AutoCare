@@ -1,5 +1,8 @@
 package ir.alidevcore.autocare.ui.dashboard
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -30,6 +33,7 @@ import ir.alidevcore.autocare.ui.components.*
 import ir.alidevcore.autocare.ui.theme.*
 import ir.alidevcore.autocare.util.JalaliDateUtil
 import ir.alidevcore.autocare.util.NumberUtil
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,15 +45,35 @@ fun DashboardScreen(
     onNavigateToHistory: () -> Unit,
     onNavigateToItems: () -> Unit,
     onNavigateToExpenses: () -> Unit,
-    onNavigateToExport: () -> Unit,
     onNavigateToBulkRecord: (itemId: Long?) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showKmDialog by remember { mutableStateOf(false) }
     var showKmDecreaseWarning by remember { mutableStateOf<Long?>(null) }
     var kmInput by remember { mutableStateOf("") }
+    var menuExpanded by remember { mutableStateOf(false) }
+    var showImportConfirmDialog by remember { mutableStateOf(false) }
 
+    val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            viewModel.importDatabase(
+                uri = uri,
+                onSuccess = { stats ->
+                    scope.launch {
+                        snackbarHostState.showSnackbar("دیتابیس با موفقیت بازیابی شد (${NumberUtil.toPersianDigits(stats.vehicleCount)} خودرو، ${NumberUtil.toPersianDigits(stats.recordCount)} سابقه)")
+                    }
+                },
+                onError = { err ->
+                    scope.launch { snackbarHostState.showSnackbar(err) }
+                }
+            )
+        }
+    }
 
     LaunchedEffect(uiState.showKmUpdateSuccess) {
         if (uiState.showKmUpdateSuccess) {
@@ -129,6 +153,33 @@ fun DashboardScreen(
         )
     }
 
+    if (showImportConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showImportConfirmDialog = false },
+            icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text("بازیابی کل دیتابیس") },
+            text = {
+                Text("توجه: با بازیابی دیتابیس، تمامی خودروها و سوابق فعلی با اطلاعات فایل پشتیبان جایگزین خواهند شد. آیا مطمئن هستید؟")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showImportConfirmDialog = false
+                        importLauncher.launch(arrayOf("application/json", "*/*"))
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("انتخاب فایل و بازیابی")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showImportConfirmDialog = false }) {
+                    Text("انصراف")
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -144,8 +195,38 @@ fun DashboardScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = onNavigateToExport) {
-                        Icon(Icons.Default.Share, contentDescription = "خروجی")
+                    Box {
+                        IconButton(onClick = { menuExpanded = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "منو دیتابیس")
+                        }
+                        DropdownMenu(
+                            expanded = menuExpanded,
+                            onDismissRequest = { menuExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("پشتیبان‌گیری از کل دیتابیس (Export)") },
+                                leadingIcon = { Icon(Icons.Default.CloudUpload, contentDescription = null) },
+                                onClick = {
+                                    menuExpanded = false
+                                    viewModel.exportDatabase(
+                                        onSuccess = {
+                                            scope.launch { snackbarHostState.showSnackbar("فایل پشتیبان دیتابیس با موفقیت آماده شد.") }
+                                        },
+                                        onError = { err ->
+                                            scope.launch { snackbarHostState.showSnackbar(err) }
+                                        }
+                                    )
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("بازیابی کل دیتابیس (Import)") },
+                                leadingIcon = { Icon(Icons.Default.CloudDownload, contentDescription = null) },
+                                onClick = {
+                                    menuExpanded = false
+                                    showImportConfirmDialog = true
+                                }
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -303,10 +384,10 @@ fun DashboardScreen(
                                 onAction = { onNavigateToAddPlan(null) }
                             )
                         }
-                        items(uiState.pendingPlans, key = { "plan_${it.id}" }) { plan ->
+                        items(uiState.pendingPlans, key = { "plan_${it.plan.id}" }) { planDisplay ->
                             PlannedServiceCard(
-                                plan = plan,
-                                onConvert = { onNavigateToAddRecord(plan.itemId, plan.id) }
+                                planDisplay = planDisplay,
+                                onConvert = { onNavigateToAddRecord(planDisplay.plan.itemId, planDisplay.plan.id) }
                             )
                         }
                     }
@@ -664,9 +745,10 @@ fun ServiceStatusCard(
 
 @Composable
 fun PlannedServiceCard(
-    plan: PlannedService,
+    planDisplay: PlannedServiceDisplay,
     onConvert: () -> Unit
 ) {
+    val plan = planDisplay.plan
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
@@ -681,15 +763,15 @@ fun PlannedServiceCard(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        Icons.Default.Schedule,
+                        Icons.Default.BuildCircle,
                         contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.secondary
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.primary
                     )
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(8.dp))
                     Text(
-                        text = "برنامه سرویس آینده",
-                        style = MaterialTheme.typography.titleSmall,
+                        text = planDisplay.itemName,
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -712,8 +794,9 @@ fun PlannedServiceCard(
             if (plan.targetKm != null) {
                 Text(
                     text = "کیلومتر هدف: ${NumberUtil.formatKm(plan.targetKm)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Medium
                 )
             }
 
@@ -725,7 +808,8 @@ fun PlannedServiceCard(
                 )
             }
 
-            if (plan.notes.isNotBlank()) {
+            // Exclude auto-generated calculation message completely
+            if (plan.notes.isNotBlank() && !plan.notes.contains("محاسبه خودکار")) {
                 Text(
                     text = "یادداشت: ${plan.notes}",
                     style = MaterialTheme.typography.bodySmall,

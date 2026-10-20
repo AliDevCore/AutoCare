@@ -42,4 +42,13 @@ interface PlannedServiceDao {
 
     @Query("SELECT * FROM planned_services WHERE status = 'PENDING' AND targetDate IS NOT NULL")
     suspend fun getAllPendingServicesWithDate(): List<PlannedService>
+
+    @Query("SELECT * FROM planned_services ORDER BY id ASC")
+    suspend fun getAllServicesList(): List<PlannedService>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertServices(services: List<PlannedService>): List<Long>
+
+    @Query("DELETE FROM planned_services")
+    suspend fun deleteAllServices()
 }

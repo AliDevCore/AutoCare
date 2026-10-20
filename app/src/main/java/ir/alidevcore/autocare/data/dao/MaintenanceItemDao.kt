@@ -38,4 +38,13 @@ interface MaintenanceItemDao {
 
     @Query("SELECT COUNT(*) FROM maintenance_items WHERE vehicleId = :vehicleId AND isActive = 1")
     suspend fun getActiveItemCount(vehicleId: Long): Int
+
+    @Query("SELECT * FROM maintenance_items ORDER BY id ASC")
+    suspend fun getAllItemsList(): List<MaintenanceItem>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertItems(items: List<MaintenanceItem>): List<Long>
+
+    @Query("DELETE FROM maintenance_items")
+    suspend fun deleteAllItems()
 }

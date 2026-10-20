@@ -30,4 +30,13 @@ interface VehicleDao {
 
     @Query("SELECT COUNT(*) FROM vehicles")
     suspend fun getVehicleCount(): Int
+
+    @Query("SELECT * FROM vehicles ORDER BY id ASC")
+    suspend fun getAllVehiclesList(): List<Vehicle>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertVehicles(vehicles: List<Vehicle>): List<Long>
+
+    @Query("DELETE FROM vehicles")
+    suspend fun deleteAllVehicles()
 }

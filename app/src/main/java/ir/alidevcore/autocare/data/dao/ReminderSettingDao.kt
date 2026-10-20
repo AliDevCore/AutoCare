@@ -29,4 +29,7 @@ interface ReminderSettingDao {
 
     @Query("SELECT * FROM reminder_settings")
     suspend fun getAllReminders(): List<ReminderSetting>
+
+    @Query("DELETE FROM reminder_settings")
+    suspend fun deleteAllReminders()
 }

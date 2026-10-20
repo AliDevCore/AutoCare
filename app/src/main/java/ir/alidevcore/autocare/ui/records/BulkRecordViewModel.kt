@@ -274,7 +274,7 @@ class BulkRecordViewModel @Inject constructor(
                         vehicleId = vehicleId,
                         targetKm = nextKm,
                         targetDate = null,
-                        notes = "محاسبه خودکار از ثبت دسته‌جمعی سوابق گذشته (${item.name})"
+                        notes = ""
                     )
                     maintenanceRepository.insertPlannedService(nextPlan)
                 }

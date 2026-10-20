@@ -1,5 +1,8 @@
 package ir.alidevcore.autocare.ui.vehicles
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -22,6 +25,7 @@ import ir.alidevcore.autocare.ui.components.*
 import ir.alidevcore.autocare.ui.theme.StatusOverdue
 import ir.alidevcore.autocare.ui.theme.StatusUpcoming
 import ir.alidevcore.autocare.util.NumberUtil
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,8 +37,29 @@ fun VehicleListScreen(
     var showAddDialog by remember { mutableStateOf(false) }
     var vehicleToEdit by remember { mutableStateOf<Vehicle?>(null) }
     var vehicleToDelete by remember { mutableStateOf<Vehicle?>(null) }
+    var menuExpanded by remember { mutableStateOf(false) }
+    var showImportConfirmDialog by remember { mutableStateOf(false) }
 
+    val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            viewModel.importDatabase(
+                uri = uri,
+                onSuccess = { stats ->
+                    scope.launch {
+                        snackbarHostState.showSnackbar("دیتابیس با موفقیت بازیابی شد (${NumberUtil.toPersianDigits(stats.vehicleCount)} خودرو، ${NumberUtil.toPersianDigits(stats.recordCount)} سابقه)")
+                    }
+                },
+                onError = { err ->
+                    scope.launch { snackbarHostState.showSnackbar(err) }
+                }
+            )
+        }
+    }
 
     LaunchedEffect(uiState.successMessage, uiState.error) {
         uiState.successMessage?.let {
@@ -80,6 +105,33 @@ fun VehicleListScreen(
         )
     }
 
+    if (showImportConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showImportConfirmDialog = false },
+            icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text("بازیابی کل دیتابیس") },
+            text = {
+                Text("توجه: با بازیابی دیتابیس، تمامی خودروها و سوابق فعلی با اطلاعات فایل پشتیبان جایگزین خواهند شد. آیا مطمئن هستید؟")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showImportConfirmDialog = false
+                        importLauncher.launch(arrayOf("application/json", "*/*"))
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("انتخاب فایل و بازیابی")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showImportConfirmDialog = false }) {
+                    Text("انصراف")
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -94,9 +146,45 @@ fun VehicleListScreen(
                         Text("اتوکِر | خودروهای من", fontWeight = FontWeight.Bold)
                     }
                 },
+                actions = {
+                    Box {
+                        IconButton(onClick = { menuExpanded = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "منو دیتابیس")
+                        }
+                        DropdownMenu(
+                            expanded = menuExpanded,
+                            onDismissRequest = { menuExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("پشتیبان‌گیری از کل دیتابیس (Export)") },
+                                leadingIcon = { Icon(Icons.Default.CloudUpload, contentDescription = null) },
+                                onClick = {
+                                    menuExpanded = false
+                                    viewModel.exportDatabase(
+                                        onSuccess = {
+                                            scope.launch { snackbarHostState.showSnackbar("فایل پشتیبان دیتابیس با موفقیت آماده شد.") }
+                                        },
+                                        onError = { err ->
+                                            scope.launch { snackbarHostState.showSnackbar(err) }
+                                        }
+                                    )
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("بازیابی کل دیتابیس (Import)") },
+                                leadingIcon = { Icon(Icons.Default.CloudDownload, contentDescription = null) },
+                                onClick = {
+                                    menuExpanded = false
+                                    showImportConfirmDialog = true
+                                }
+                            )
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
         },
