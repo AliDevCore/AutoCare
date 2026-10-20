@@ -27,6 +27,7 @@ object DatabaseModule {
             AutoCareDatabase::class.java,
             AutoCareDatabase.DATABASE_NAME
         )
+            .addMigrations(AutoCareDatabase.MIGRATION_1_2)
             .fallbackToDestructiveMigration()
             .build()
     }
