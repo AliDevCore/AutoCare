@@ -34,6 +34,9 @@ interface PlannedServiceDao {
     @Query("UPDATE planned_services SET status = 'DONE', convertedToRecordId = :recordId WHERE id = :planId")
     suspend fun markAsDone(planId: Long, recordId: Long)
 
+    @Query("UPDATE planned_services SET status = 'CANCELLED' WHERE id = :planId")
+    suspend fun markAsCancelled(planId: Long)
+
     @Query("SELECT * FROM planned_services WHERE vehicleId = :vehicleId AND status = 'PENDING' AND targetDate IS NOT NULL ORDER BY targetDate ASC")
     suspend fun getPendingServicesWithDateOnce(vehicleId: Long): List<PlannedService>
 

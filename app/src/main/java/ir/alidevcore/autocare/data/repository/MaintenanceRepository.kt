@@ -119,13 +119,13 @@ class MaintenanceRepository @Inject constructor(
     suspend fun getServiceById(id: Long): PlannedService? = plannedDao.getServiceById(id)
 
     suspend fun insertPlannedService(service: PlannedService): Long =
-        plannedDao.insertPlannedService(service)
+        plannedDao.insertService(service)
 
     suspend fun updatePlannedService(service: PlannedService) =
-        plannedDao.updatePlannedService(service)
+        plannedDao.updateService(service)
 
     suspend fun deletePlannedService(service: PlannedService) =
-        plannedDao.deletePlannedService(service)
+        plannedDao.deleteService(service)
 
     suspend fun markPlanAsDone(planId: Long, recordId: Long) =
         plannedDao.markAsDone(planId, recordId)
