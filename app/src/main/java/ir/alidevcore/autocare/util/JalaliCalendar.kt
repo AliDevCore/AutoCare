@@ -41,7 +41,7 @@ class JalaliCalendar {
     fun toGregorian(): Calendar {
         val (gy, gm, gd) = jalaliToGregorian(year, month, day)
         val cal = Calendar.getInstance()
-        cal.set(gy, gm - 1, gd, 0, 0, 0)
+        cal.set(gy, gm - 1, gd, 12, 0, 0)
         cal.set(Calendar.MILLISECOND, 0)
         return cal
     }
