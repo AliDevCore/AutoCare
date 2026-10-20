@@ -9,6 +9,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -137,7 +139,7 @@ fun DashboardScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowForward, contentDescription = "تغییر خودرو")
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "تغییر خودرو")
                     }
                 },
                 actions = {
@@ -510,7 +512,7 @@ fun MonthlyExpenseCard(
                 }
             }
             Icon(
-                Icons.Default.ArrowBack,
+                Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "مشاهده گزارش",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )

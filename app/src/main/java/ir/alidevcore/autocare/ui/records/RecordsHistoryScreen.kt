@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -140,7 +141,7 @@ fun RecordsHistoryScreen(
                 actions = {
                     Box {
                         IconButton(onClick = { sortMenuExpanded = true }) {
-                            Icon(Icons.Default.Sort, contentDescription = "مرتب‌سازی")
+                            Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "مرتب‌سازی")
                         }
                         DropdownMenu(
                             expanded = sortMenuExpanded,
