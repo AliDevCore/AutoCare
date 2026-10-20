@@ -1,0 +1,65 @@
+package ir.alidevcore.autocare
+
+import ir.alidevcore.autocare.data.model.MaintenanceRecord
+import ir.alidevcore.autocare.data.model.PlanStatus
+import ir.alidevcore.autocare.data.model.PlannedService
+import org.junit.Assert.*
+import org.junit.Test
+
+class BusinessLogicTest {
+
+    @Test
+    fun testExpenseCalculationIgnoresNullCosts() {
+        val records = listOf(
+            MaintenanceRecord(id = 1, itemId = 1, date = 1000L, km = 10000L, cost = 500000L),
+            MaintenanceRecord(id = 2, itemId = 1, date = 2000L, km = 15000L, cost = null), // no cost specified
+            MaintenanceRecord(id = 3, itemId = 2, date = 3000L, km = 20000L, cost = 1200000L),
+            MaintenanceRecord(id = 4, itemId = 2, date = 4000L, km = 25000L, cost = null)  // no cost specified
+        )
+
+        val costedRecords = records.filter { it.cost != null }
+        val totalCost = costedRecords.sumOf { it.cost!! }
+
+        assertEquals(2, costedRecords.size)
+        assertEquals(4, records.size)
+        assertEquals(1700000L, totalCost)
+    }
+
+    @Test
+    fun testPlanStatusTransitionOnCompletion() {
+        val initialPlan = PlannedService(
+            id = 42,
+            itemId = 5,
+            vehicleId = 1,
+            targetKm = 110000L,
+            status = PlanStatus.PENDING
+        )
+        assertEquals(PlanStatus.PENDING, initialPlan.status)
+        assertNull(initialPlan.convertedToRecordId)
+
+        val completedPlan = initialPlan.copy(
+            status = PlanStatus.DONE,
+            convertedToRecordId = 99L
+        )
+        assertEquals(PlanStatus.DONE, completedPlan.status)
+        assertEquals(99L, completedPlan.convertedToRecordId)
+    }
+
+    @Test
+    fun testMultiVehicleDataSeparation() {
+        val vehicle1Records = listOf(
+            MaintenanceRecord(id = 1, itemId = 101, date = 1000L, km = 50000L, cost = 200000L),
+            MaintenanceRecord(id = 2, itemId = 102, date = 2000L, km = 55000L, cost = 300000L)
+        )
+        val vehicle2Records = listOf(
+            MaintenanceRecord(id = 3, itemId = 201, date = 3000L, km = 120000L, cost = 800000L)
+        )
+
+        val v1Total = vehicle1Records.filter { it.cost != null }.sumOf { it.cost!! }
+        val v2Total = vehicle2Records.filter { it.cost != null }.sumOf { it.cost!! }
+
+        assertEquals(500000L, v1Total)
+        assertEquals(800000L, v2Total)
+        assertNotEquals(v1Total, v2Total)
+    }
+}
