@@ -14,8 +14,6 @@ workManager = "2.9.0"
 hiltWork = "1.2.0"
 datastore = "1.1.1"
 poi = "5.2.5"
-vico = "1.13.1"
-jalaliCalendar = "1.1.5"
 junit = "4.13.2"
 junitVersion = "1.2.1"
 espressoCore = "3.6.1"
@@ -63,14 +61,6 @@ androidx-datastore-preferences = { group = "androidx.datastore", name = "datasto
 # Apache POI (Excel export)
 apache-poi = { group = "org.apache.poi", name = "poi", version.ref = "poi" }
 apache-poi-ooxml = { group = "org.apache.poi", name = "poi-ooxml", version.ref = "poi" }
-
-# Vico Charts
-vico-compose = { group = "com.patrykandpatrick.vico", name = "compose", version.ref = "vico" }
-vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", version.ref = "vico" }
-vico-core = { group = "com.patrykandpatrick.vico", name = "core", version.ref = "vico" }
-
-# Jalali/Persian Calendar
-jalali-calendar = { group = "ir.huri", name = "JalaliCalendar", version.ref = "jalaliCalendar" }
 
 # Testing
 junit = { group = "junit", name = "junit", version.ref = "junit" }
