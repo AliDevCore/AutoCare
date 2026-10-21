@@ -2,6 +2,8 @@ package ir.alidevcore.autocare.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.RoomDatabase
+import androidx.sqlite.db.SupportSQLiteDatabase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -28,6 +30,15 @@ object DatabaseModule {
             AutoCareDatabase.DATABASE_NAME
         )
             .addMigrations(AutoCareDatabase.MIGRATION_1_2)
+            .addCallback(object : RoomDatabase.Callback() {
+                override fun onOpen(db: SupportSQLiteDatabase) {
+                    super.onOpen(db)
+                    try {
+                        db.execSQL("UPDATE maintenance_records SET id = (SELECT COALESCE(MAX(id), 0) + 1 FROM maintenance_records WHERE id > 0) WHERE id <= 0")
+                        db.execSQL("UPDATE planned_services SET id = (SELECT COALESCE(MAX(id), 0) + 1 FROM planned_services WHERE id > 0) WHERE id <= 0")
+                    } catch (_: Exception) {}
+                }
+            })
             .fallbackToDestructiveMigration()
             .build()
     }

@@ -103,4 +103,35 @@ class BusinessLogicTest {
 
         assertEquals(listOf(30000L, 60000L, 90000L, 130000L), parsed)
     }
+
+    @Test
+    fun testNewRecordIdAlwaysZeroForAutoIncrement() {
+        val navRecordId = -1L
+        val sanitizedRecordId = if (navRecordId > 0) navRecordId else null
+        val isEditing = false
+
+        val record = MaintenanceRecord(
+            id = if (isEditing && sanitizedRecordId != null) sanitizedRecordId else 0L,
+            itemId = 10,
+            km = 100000L
+        )
+
+        assertEquals("New records must have id=0 to trigger SQLite autoincrement", 0L, record.id)
+    }
+
+    @Test
+    fun testNewPlanIdAlwaysZeroForAutoIncrement() {
+        val navPlanId = -1L
+        val sanitizedPlanId = if (navPlanId > 0) navPlanId else null
+        val isEditing = false
+
+        val plan = PlannedService(
+            id = if (isEditing && sanitizedPlanId != null) sanitizedPlanId else 0L,
+            itemId = 10,
+            vehicleId = 1,
+            targetKm = 150000L
+        )
+
+        assertEquals("New plans must have id=0 to trigger SQLite autoincrement", 0L, plan.id)
+    }
 }

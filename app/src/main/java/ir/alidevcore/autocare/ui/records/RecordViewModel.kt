@@ -51,9 +51,12 @@ class RecordViewModel @Inject constructor(
 ) : ViewModel() {
 
     val vehicleId: Long = savedStateHandle.get<Long>("vehicleId") ?: 0L
-    private val initialItemId: Long? = savedStateHandle.get<Long>("itemId")
-    private val recordId: Long? = savedStateHandle.get<Long>("recordId")
-    private val planId: Long? = savedStateHandle.get<Long>("planId")
+    private val rawItemId: Long? = savedStateHandle.get<Long>("itemId")
+    private val initialItemId: Long? = if (rawItemId != null && rawItemId > 0) rawItemId else null
+    private val rawRecordId: Long? = savedStateHandle.get<Long>("recordId")
+    val recordId: Long? = if (rawRecordId != null && rawRecordId > 0) rawRecordId else null
+    private val rawPlanId: Long? = savedStateHandle.get<Long>("planId")
+    val planId: Long? = if (rawPlanId != null && rawPlanId > 0) rawPlanId else null
 
     private val _uiState = MutableStateFlow(AddRecordUiState(planId = planId))
     val uiState: StateFlow<AddRecordUiState> = _uiState.asStateFlow()
@@ -265,7 +268,7 @@ class RecordViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val record = MaintenanceRecord(
-                    id = recordId ?: 0L,
+                    id = if (state.isEditing && recordId != null && recordId > 0) recordId else 0L,
                     itemId = item.id,
                     date = if (state.isDateUnknown) null else state.date,
                     km = km,

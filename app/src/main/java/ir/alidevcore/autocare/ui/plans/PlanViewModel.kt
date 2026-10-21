@@ -40,8 +40,10 @@ class PlanViewModel @Inject constructor(
 ) : ViewModel() {
 
     val vehicleId: Long = savedStateHandle.get<Long>("vehicleId") ?: 0L
-    private val initialItemId: Long? = savedStateHandle.get<Long>("itemId")
-    private val planId: Long? = savedStateHandle.get<Long>("planId")
+    private val rawItemId: Long? = savedStateHandle.get<Long>("itemId")
+    private val initialItemId: Long? = if (rawItemId != null && rawItemId > 0) rawItemId else null
+    private val rawPlanId: Long? = savedStateHandle.get<Long>("planId")
+    val planId: Long? = if (rawPlanId != null && rawPlanId > 0) rawPlanId else null
 
     private val _uiState = MutableStateFlow(AddPlanUiState())
     val uiState: StateFlow<AddPlanUiState> = _uiState.asStateFlow()
@@ -140,7 +142,7 @@ class PlanViewModel @Inject constructor(
                 val vehicleName = vehicle?.name ?: "خودرو"
 
                 val plan = PlannedService(
-                    id = planId ?: 0L,
+                    id = if (state.isEditing && planId != null && planId > 0) planId else 0L,
                     itemId = item.id,
                     vehicleId = vehicleId,
                     targetKm = km,
