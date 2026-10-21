@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -291,7 +292,7 @@ fun BulkRecordScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(10.dp)
                             ) {
-                                Icon(Icons.Default.PlaylistAdd, contentDescription = null)
+                                Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = null)
                                 Spacer(Modifier.width(8.dp))
                                 Text("تبدیل به ردیف‌های سابقه")
                             }

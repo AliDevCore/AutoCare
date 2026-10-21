@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -141,7 +142,7 @@ fun RecordsHistoryScreen(
                 onNavigateBack = onNavigateBack,
                 actions = {
                     IconButton(onClick = onBulkRecord) {
-                        Icon(Icons.Default.PlaylistAdd, contentDescription = "ثبت دسته‌جمعی سوابق")
+                        Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = "ثبت دسته‌جمعی سوابق")
                     }
                     Box {
                         IconButton(onClick = { sortMenuExpanded = true }) {
