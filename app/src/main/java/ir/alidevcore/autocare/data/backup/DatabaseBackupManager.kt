@@ -102,7 +102,6 @@ class DatabaseBackupManager @Inject constructor(
                     put("description", r.description)
                     put("parts", r.parts)
                     put("workshop", r.workshop)
-                    if (r.invoiceUri != null) put("invoiceUri", r.invoiceUri) else put("invoiceUri", JSONObject.NULL)
                     put("createdAt", r.createdAt)
                 })
             }
@@ -240,7 +239,6 @@ class DatabaseBackupManager @Inject constructor(
                         description = o.optString("description", ""),
                         parts = o.optString("parts", ""),
                         workshop = o.optString("workshop", ""),
-                        invoiceUri = if (o.isNull("invoiceUri")) null else o.getString("invoiceUri"),
                         createdAt = o.optLong("createdAt", System.currentTimeMillis())
                     )
                 )
