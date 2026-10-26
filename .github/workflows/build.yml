@@ -6,6 +6,15 @@ on:
   pull_request:
     branches: [ "main", "master" ]
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Custom release tag (optional, e.g. v1.1.0. Default: v1.0.<run_number>)'
+        required: false
+        default: ''
+      release_title:
+        description: 'Release title (optional)'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -100,12 +109,15 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         with:
-          tag_name: "v1.0.${{ github.run_number }}"
-          name: "نسخه رسمی AutoCare v1.0.${{ github.run_number }}"
+          tag_name: ${{ inputs.release_tag != '' && inputs.release_tag || format('v1.0.{0}', github.run_number) }}
+          name: ${{ inputs.release_title != '' && inputs.release_title || format('نسخه رسمی AutoCare v1.0.{0}', github.run_number) }}
           body: |
             ### 🚗 دانلود مستقیم نسخه اپلیکیشن AutoCare
             - فایل‌های نصبی تولیدشده در این نسخه در پیوست قرار دارند.
+            - **AutoCare-Release.apk**: نسخه نهایی رسمی، امضا شده و بهینه‌شده (با کلید پایدار برای ارتقای بدون پاک شدن اطلاعات).
+            - **AutoCare-Debug.apk**: نسخه تست و عیب‌یابی.
           draft: false
           prerelease: false
           make_latest: true
           files: output_apks/*.apk
+

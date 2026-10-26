@@ -13,4 +13,9 @@ captures/
 *.aab
 *.jks
 *.keystore
+*.b64
 release-key.properties
+
+# Signing keys directory
+AutoCare Key/
+AutoCare-Key/
