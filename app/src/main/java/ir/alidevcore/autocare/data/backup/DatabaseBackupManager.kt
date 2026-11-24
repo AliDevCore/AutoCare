@@ -177,6 +177,75 @@ class DatabaseBackupManager @Inject constructor(
     }
 
     /**
+     * Exports maintenance records to an Excel-compatible CSV file with UTF-8 BOM encoding.
+     */
+    suspend fun exportRecordsToExcel(
+        vehicleName: String,
+        records: List<Pair<MaintenanceRecord, String>>
+    ): File = withContext(Dispatchers.IO) {
+        val (year, month, day) = JalaliDateUtil.getCurrentJalaliDate()
+        val timeStr = SimpleDateFormat("HHmmss", Locale.US).format(Date())
+        val cleanVehicle = vehicleName.replace(Regex("[^a-zA-Z0-9آ-ی]+"), "_").trim('_')
+        val fileName = "AutoCare_${cleanVehicle}_${String.format("%04d%02d%02d", year, month, day)}_$timeStr.csv"
+
+        val exportDir = File(context.cacheDir, "exports").apply { mkdirs() }
+        val file = File(exportDir, fileName)
+
+        FileOutputStream(file).use { fos ->
+            OutputStreamWriter(fos, StandardCharsets.UTF_8).use { writer ->
+                // Write UTF-8 BOM so Excel opens Persian without encoding issues
+                writer.write("\uFEFF")
+
+                // CSV Header
+                writer.write("ردیف,عنوان سرویس / قطعه,تاریخ انجام (شمسی),کیلومتر کارکرد,هزینه (تومان),تعمیرگاه,برند قطعه,توضیحات\n")
+
+                records.forEachIndexed { index, (record, itemName) ->
+                    val dateStr = record.date?.let { JalaliDateUtil.timestampToJalaliString(it) } ?: "ثبت بر اساس کارکرد"
+                    val costStr = record.cost?.toString() ?: "0"
+                    val row = listOf(
+                        (index + 1).toString(),
+                        escapeCsv(itemName),
+                        escapeCsv(dateStr),
+                        record.km.toString(),
+                        costStr,
+                        escapeCsv(record.workshop),
+                        escapeCsv(record.parts),
+                        escapeCsv(record.description)
+                    ).joinToString(",")
+                    writer.write(row + "\n")
+                }
+            }
+        }
+        file
+    }
+
+    private fun escapeCsv(text: String): String {
+        if (text.contains(",") || text.contains("\"") || text.contains("\n") || text.contains("\r")) {
+            return "\"" + text.replace("\"", "\"\"") + "\""
+        }
+        return text
+    }
+
+    fun shareExcelFile(file: File) {
+        val uri: Uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file
+        )
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/csv"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            putExtra(Intent.EXTRA_SUBJECT, file.name)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        val chooser = Intent.createChooser(intent, "خروجی اکسل سوابق خودرو").apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(chooser)
+    }
+
+    /**
      * Imports and replaces the entire database from a backup JSON file URI.
      * All actions run within a safe Room transaction.
      */

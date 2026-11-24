@@ -30,6 +30,7 @@ data class DashboardUiState(
     val upcomingItems: List<ItemWithLastRecord> = emptyList(),
     val allItems: List<MaintenanceItem> = emptyList(),
     val categories: List<String> = emptyList(),
+    val allRecords: List<RecordDisplay> = emptyList(),
     val recentRecords: List<RecordDisplay> = emptyList(),
     val pendingPlans: List<PlannedServiceDisplay> = emptyList(),
     val monthlyTotal: Long = 0L,
@@ -94,8 +95,8 @@ class DashboardViewModel @Inject constructor(
                 vehicleRepository.getVehicleById(vehicleId).filterNotNull(),
                 maintenanceRepository.getAllItemsForVehicle(vehicleId),
                 maintenanceRepository.getPendingServicesForVehicle(vehicleId),
-                maintenanceRepository.getRecentRecordsForVehicle(vehicleId, 5)
-            ) { vehicle, allItemsList, pendingPlansList, recentRecordsList ->
+                maintenanceRepository.getRecordsForVehicle(vehicleId)
+            ) { vehicle, allItemsList, pendingPlansList, allRecordsList ->
                 // Compute item statuses
                 val itemStatuses = maintenanceRepository.computeItemStatuses(vehicle.id, vehicle.currentKm)
                 val overdueItems = itemStatuses.filter { it.status == ServiceStatus.OVERDUE }
@@ -114,8 +115,9 @@ class DashboardViewModel @Inject constructor(
                     )
                 }
 
-                // Map recent records with item names (clean date or empty if no date)
-                val recentRecords = recentRecordsList.map { record ->
+                // Map records sorted by KM DESCENDING (highest km to lowest)
+                val sortedRecords = allRecordsList.sortedByDescending { it.km }
+                val allRecords = sortedRecords.map { record ->
                     val item = allItemsList.find { it.id == record.itemId } ?: maintenanceRepository.getItemByIdOnce(record.itemId)
                     RecordDisplay(
                         record = record,
@@ -123,6 +125,7 @@ class DashboardViewModel @Inject constructor(
                         dateDisplay = record.date?.let { JalaliDateUtil.timestampToJalaliStringWithMonthName(it) } ?: ""
                     )
                 }
+                val recentRecords = allRecords.take(5)
 
                 // Monthly cost
                 val now = System.currentTimeMillis()
@@ -138,6 +141,7 @@ class DashboardViewModel @Inject constructor(
                     upcomingItems = upcomingItems,
                     allItems = allItemsList,
                     categories = categories,
+                    allRecords = allRecords,
                     recentRecords = recentRecords,
                     pendingPlans = pendingPlans,
                     monthlyTotal = monthlyTotal,
@@ -246,6 +250,35 @@ class DashboardViewModel @Inject constructor(
                 _uiState.update { it.copy(message = "قلم با موفقیت حذف شد") }
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = "خطا در حذف: ${e.message}") }
+            }
+        }
+    }
+
+    fun deleteRecord(record: MaintenanceRecord) {
+        viewModelScope.launch {
+            try {
+                maintenanceRepository.deleteRecord(record)
+                _uiState.update { it.copy(message = "سابقه سرویس با موفقیت حذف شد.") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "خطا در حذف سابقه: ${e.message}") }
+            }
+        }
+    }
+
+    fun exportRecordsToCsv() {
+        val state = _uiState.value
+        val vehicleName = state.vehicle?.name ?: "خودرو"
+        if (state.allRecords.isEmpty()) {
+            _uiState.update { it.copy(error = "هیچ سابقه‌ای برای خروجی اکسل وجود ندارد.") }
+            return
+        }
+        viewModelScope.launch {
+            try {
+                val recordsPair = state.allRecords.map { Pair(it.record, it.itemName) }
+                val file = backupManager.exportRecordsToExcel(vehicleName, recordsPair)
+                backupManager.shareExcelFile(file)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "خطا در خروجی اکسل: ${e.message}") }
             }
         }
     }

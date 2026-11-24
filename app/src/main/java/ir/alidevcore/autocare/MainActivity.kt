@@ -108,6 +108,9 @@ class MainActivity : ComponentActivity() {
                                     onNavigateToAddRecord = { itemId, planId ->
                                         navController.navigate(Screen.AddRecord.createRoute(vehicleId, itemId = itemId, planId = planId))
                                     },
+                                    onNavigateToEditRecord = { recordId ->
+                                        navController.navigate(Screen.AddRecord.createRoute(vehicleId, recordId = recordId))
+                                    },
                                     onNavigateToAddPlan = { itemId, planId ->
                                         navController.navigate(Screen.AddPlan.createRoute(vehicleId, itemId = itemId, planId = planId))
                                     },

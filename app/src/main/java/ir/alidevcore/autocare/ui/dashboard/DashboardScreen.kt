@@ -55,6 +55,7 @@ fun DashboardScreen(
     viewModel: DashboardViewModel,
     onNavigateBack: () -> Unit,
     onNavigateToAddRecord: (itemId: Long?, planId: Long?) -> Unit,
+    onNavigateToEditRecord: (recordId: Long) -> Unit = {},
     onNavigateToAddPlan: (itemId: Long?, planId: Long?) -> Unit,
     onNavigateToHistory: () -> Unit,
     onNavigateToItems: () -> Unit,
@@ -63,6 +64,8 @@ fun DashboardScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val selectedTab by viewModel.selectedTab.collectAsState()
+    var historyPage by remember { mutableStateOf(1) }
+    var recordToDelete by remember { mutableStateOf<RecordDisplay?>(null) }
     var showKmDialog by remember { mutableStateOf(false) }
     var showKmDecreaseWarning by remember { mutableStateOf<Long?>(null) }
     var kmInput by remember { mutableStateOf("") }
@@ -247,6 +250,18 @@ fun DashboardScreen(
                 }
             },
             onDismiss = { planToDelete = null }
+        )
+    }
+
+    recordToDelete?.let { recordDisplay ->
+        ConfirmDeleteDialog(
+            title = "حذف سابقه سرویس",
+            message = "آیا از حذف سابقه «${recordDisplay.itemName}» (${NumberUtil.formatKm(recordDisplay.record.km)}) اطمینان دارید؟",
+            onConfirm = {
+                viewModel.deleteRecord(recordDisplay.record)
+                recordToDelete = null
+            },
+            onDismiss = { recordToDelete = null }
         )
     }
 
@@ -608,59 +623,84 @@ fun DashboardScreen(
                                 item {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
                                         Button(
                                             onClick = { onNavigateToAddRecord(null, null) },
                                             modifier = Modifier
                                                 .weight(1f)
-                                                .defaultMinSize(minHeight = 48.dp),
+                                                .defaultMinSize(minHeight = 44.dp),
                                             shape = RoundedCornerShape(12.dp),
-                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp)
+                                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
                                         ) {
-                                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                                            Spacer(Modifier.width(4.dp))
-                                            Text("ثبت سرویس", fontSize = 13.5.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                            Spacer(Modifier.width(3.dp))
+                                            Text(
+                                                "ثبت سرویس",
+                                                fontSize = 11.5.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1,
+                                                softWrap = false
+                                            )
                                         }
                                         OutlinedButton(
                                             onClick = { onNavigateToBulkRecord(null) },
                                             modifier = Modifier
                                                 .weight(1f)
-                                                .defaultMinSize(minHeight = 48.dp),
+                                                .defaultMinSize(minHeight = 44.dp),
                                             shape = RoundedCornerShape(12.dp),
-                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp)
+                                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
                                         ) {
-                                            Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = null, modifier = Modifier.size(18.dp))
-                                            Spacer(Modifier.width(4.dp))
-                                            Text("ثبت دسته‌جمعی", fontSize = 13.5.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                                            Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = null, modifier = Modifier.size(16.dp))
+                                            Spacer(Modifier.width(3.dp))
+                                            Text(
+                                                "ثبت دسته‌جمعی",
+                                                fontSize = 11.5.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                maxLines = 1,
+                                                softWrap = false
+                                            )
+                                        }
+                                        FilledTonalButton(
+                                            onClick = { viewModel.exportRecordsToCsv() },
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .defaultMinSize(minHeight = 44.dp),
+                                            shape = RoundedCornerShape(12.dp),
+                                            colors = ButtonDefaults.filledTonalButtonColors(
+                                                containerColor = Color(0xFFE8F5E9),
+                                                contentColor = Color(0xFF1B5E20)
+                                            ),
+                                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
+                                        ) {
+                                            Icon(Icons.Default.TableChart, contentDescription = null, modifier = Modifier.size(16.dp))
+                                            Spacer(Modifier.width(3.dp))
+                                            Text(
+                                                "خروجی اکسل",
+                                                fontSize = 11.5.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1,
+                                                softWrap = false
+                                            )
                                         }
                                     }
                                 }
 
-                                item {
-                                    FilledTonalButton(
-                                        onClick = onNavigateToHistory,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .defaultMinSize(minHeight = 48.dp),
-                                        shape = RoundedCornerShape(12.dp),
-                                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
-                                    ) {
-                                        Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp))
-                                        Spacer(Modifier.width(8.dp))
-                                        Text("جستجو، فیلتر و خروجی اکسل", fontSize = 13.5.sp, fontWeight = FontWeight.Medium, maxLines = 1)
-                                    }
-                                }
+                                val pageSize = 20
+                                val totalRecords = uiState.allRecords.size
+                                val totalPages = maxOf(1, (totalRecords + pageSize - 1) / pageSize)
+                                val safePage = historyPage.coerceIn(1, totalPages)
+                                val startIndex = (safePage - 1) * pageSize
+                                val endIndex = minOf(startIndex + pageSize, totalRecords)
+                                val currentRecords = if (totalRecords > 0) uiState.allRecords.subList(startIndex, endIndex) else emptyList()
 
                                 item {
                                     SectionHeader(
-                                        title = "آخرین سوابق ثبت‌شده خودرو",
-                                        actionText = "مشاهده همه",
-                                        onAction = onNavigateToHistory
+                                        title = "سوابق ثبت‌شده خودرو (${NumberUtil.toPersianDigits(totalRecords)})"
                                     )
                                 }
 
-                                if (uiState.recentRecords.isEmpty()) {
+                                if (uiState.allRecords.isEmpty()) {
                                     item {
                                         EmptyState(
                                             icon = Icons.Default.History,
@@ -671,8 +711,61 @@ fun DashboardScreen(
                                         )
                                     }
                                 } else {
-                                    items(uiState.recentRecords, key = { "rec_${it.record.id}" }) { recordDisplay ->
-                                        RecentRecordCard(recordDisplay = recordDisplay)
+                                    items(currentRecords, key = { "rec_${it.record.id}" }) { recordDisplay ->
+                                        RecentRecordCard(
+                                            recordDisplay = recordDisplay,
+                                            onClick = { onNavigateToEditRecord(recordDisplay.record.id) },
+                                            onDelete = { recordToDelete = recordDisplay }
+                                        )
+                                    }
+
+                                    if (totalPages > 1) {
+                                        item {
+                                            Card(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(vertical = 8.dp),
+                                                shape = RoundedCornerShape(12.dp),
+                                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    OutlinedButton(
+                                                        onClick = { if (safePage > 1) historyPage = safePage - 1 },
+                                                        enabled = safePage > 1,
+                                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                                        shape = RoundedCornerShape(8.dp)
+                                                    ) {
+                                                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp))
+                                                        Spacer(Modifier.width(4.dp))
+                                                        Text("صفحه قبلی", fontSize = 12.sp)
+                                                    }
+
+                                                    Text(
+                                                        text = "صفحه ${NumberUtil.toPersianDigits(safePage)} از ${NumberUtil.toPersianDigits(totalPages)}",
+                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+
+                                                    OutlinedButton(
+                                                        onClick = { if (safePage < totalPages) historyPage = safePage + 1 },
+                                                        enabled = safePage < totalPages,
+                                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                                        shape = RoundedCornerShape(8.dp)
+                                                    ) {
+                                                        Text("صفحه بعدی", fontSize = 12.sp)
+                                                        Spacer(Modifier.width(4.dp))
+                                                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, modifier = Modifier.size(16.dp))
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -1156,36 +1249,20 @@ fun PlannedServiceCard(
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.BuildCircle,
-                        contentDescription = null,
-                        modifier = Modifier.size(22.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = planDisplay.itemName,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = MaterialTheme.colorScheme.secondaryContainer
-                ) {
-                    Text(
-                        text = "برنامه‌ریزی‌شده",
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
-                    )
-                }
+                Icon(
+                    Icons.Default.BuildCircle,
+                    contentDescription = null,
+                    modifier = Modifier.size(22.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = planDisplay.itemName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
             }
 
             Spacer(Modifier.height(10.dp))
@@ -1257,11 +1334,11 @@ fun PlannedServiceCard(
                 FilledTonalButton(
                     onClick = onConvert,
                     shape = RoundedCornerShape(10.dp),
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                 ) {
-                    Icon(Icons.Default.DoneAll, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("تبدیل به سرویس انجام‌شده", fontSize = 12.5.sp, fontWeight = FontWeight.Bold)
+                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("انجام شد", fontSize = 12.5.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -1269,9 +1346,15 @@ fun PlannedServiceCard(
 }
 
 @Composable
-fun RecentRecordCard(recordDisplay: RecordDisplay) {
+fun RecentRecordCard(
+    recordDisplay: RecordDisplay,
+    onClick: (() -> Unit)? = null,
+    onDelete: (() -> Unit)? = null
+) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier),
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
@@ -1283,7 +1366,7 @@ fun RecentRecordCard(recordDisplay: RecordDisplay) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = recordDisplay.itemName,
                     style = MaterialTheme.typography.bodyLarge,
@@ -1302,8 +1385,26 @@ fun RecentRecordCard(recordDisplay: RecordDisplay) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            if (recordDisplay.record.cost != null) {
-                CostChip(amount = recordDisplay.record.cost)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                if (recordDisplay.record.cost != null) {
+                    CostChip(amount = recordDisplay.record.cost)
+                }
+                if (onDelete != null) {
+                    IconButton(
+                        onClick = onDelete,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "حذف سابقه",
+                            tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
             }
         }
     }
