@@ -646,10 +646,10 @@ fun DashboardScreen(
                                         OutlinedButton(
                                             onClick = { onNavigateToBulkRecord(null) },
                                             modifier = Modifier
-                                                .weight(1f)
+                                                .weight(1.25f)
                                                 .defaultMinSize(minHeight = 44.dp),
                                             shape = RoundedCornerShape(12.dp),
-                                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
+                                            contentPadding = PaddingValues(horizontal = 2.dp, vertical = 8.dp)
                                         ) {
                                             Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = null, modifier = Modifier.size(16.dp))
                                             Spacer(Modifier.width(3.dp))
@@ -664,19 +664,19 @@ fun DashboardScreen(
                                         FilledTonalButton(
                                             onClick = { viewModel.exportRecordsToCsv() },
                                             modifier = Modifier
-                                                .weight(1f)
+                                                .weight(0.85f)
                                                 .defaultMinSize(minHeight = 44.dp),
                                             shape = RoundedCornerShape(12.dp),
                                             colors = ButtonDefaults.filledTonalButtonColors(
                                                 containerColor = Color(0xFFE8F5E9),
                                                 contentColor = Color(0xFF1B5E20)
                                             ),
-                                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
+                                            contentPadding = PaddingValues(horizontal = 2.dp, vertical = 8.dp)
                                         ) {
                                             Icon(Icons.Default.TableChart, contentDescription = null, modifier = Modifier.size(16.dp))
                                             Spacer(Modifier.width(3.dp))
                                             Text(
-                                                "خروجی اکسل",
+                                                "خروجی",
                                                 fontSize = 11.5.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 maxLines = 1,
@@ -738,11 +738,9 @@ fun DashboardScreen(
                                                     OutlinedButton(
                                                         onClick = { if (safePage > 1) historyPage = safePage - 1 },
                                                         enabled = safePage > 1,
-                                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp),
                                                         shape = RoundedCornerShape(8.dp)
                                                     ) {
-                                                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp))
-                                                        Spacer(Modifier.width(4.dp))
                                                         Text("صفحه قبلی", fontSize = 12.sp)
                                                     }
 
@@ -756,12 +754,10 @@ fun DashboardScreen(
                                                     OutlinedButton(
                                                         onClick = { if (safePage < totalPages) historyPage = safePage + 1 },
                                                         enabled = safePage < totalPages,
-                                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp),
                                                         shape = RoundedCornerShape(8.dp)
                                                     ) {
                                                         Text("صفحه بعدی", fontSize = 12.sp)
-                                                        Spacer(Modifier.width(4.dp))
-                                                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, modifier = Modifier.size(16.dp))
                                                     }
                                                 }
                                             }
