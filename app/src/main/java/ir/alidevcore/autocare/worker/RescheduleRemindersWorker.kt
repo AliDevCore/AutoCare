@@ -42,12 +42,17 @@ class RescheduleRemindersWorker @AssistedInject constructor(
                 }
 
                 val targetDate = plan.targetDate
-                val triggerTime = reminderScheduler.computeTriggerTime(targetDate, reminder.daysBefore)
+                var triggerTime = reminderScheduler.computeTriggerTime(targetDate, reminder.daysBefore)
 
-                // If trigger time has already passed, cancel any pending alarm so it doesn't fire erroneously
+                // If trigger time has already passed, check if it was due today (within past 12h) to avoid missing notifications after reboot
                 if (triggerTime <= now) {
-                    reminderScheduler.cancelReminder(reminder.notificationId)
-                    continue
+                    val isRecent = (now - triggerTime) < 12 * 60 * 60 * 1000L && now <= (targetDate + 24 * 60 * 60 * 1000L)
+                    if (isRecent) {
+                        triggerTime = now + 5000L
+                    } else {
+                        reminderScheduler.cancelReminder(reminder.notificationId)
+                        continue
+                    }
                 }
 
                 val item = maintenanceRepository.getItemByIdOnce(plan.itemId)

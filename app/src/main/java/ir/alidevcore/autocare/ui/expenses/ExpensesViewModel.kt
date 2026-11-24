@@ -85,9 +85,11 @@ class ExpensesViewModel @Inject constructor(
                 val catMap = mutableMapOf<String, Long>()
                 val catCountMap = mutableMapOf<String, Int>()
 
+                val allItems = maintenanceRepository.getAllItemsForVehicle(vehicleId).first()
+                val itemMap = allItems.associateBy { it.id }
+
                 for (rec in costedRecords) {
-                    val item = maintenanceRepository.getItemByIdOnce(rec.itemId)
-                    val cat = item?.category ?: "عمومی"
+                    val cat = itemMap[rec.itemId]?.category ?: "عمومی"
                     catMap[cat] = (catMap[cat] ?: 0L) + (rec.cost ?: 0L)
                     catCountMap[cat] = (catCountMap[cat] ?: 0) + 1
                 }

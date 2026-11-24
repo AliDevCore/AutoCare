@@ -125,7 +125,7 @@ interface MaintenanceRecordDao {
 
     // For cost analytics - group by month
     @Query("""
-        SELECT strftime('%Y-%m', datetime(r.date / 1000, 'unixepoch')) as month,
+        SELECT strftime('%Y-%m', datetime(r.date / 1000, 'unixepoch', 'localtime')) as month,
                SUM(r.cost) as totalCost,
                COUNT(*) as recordCount
         FROM maintenance_records r

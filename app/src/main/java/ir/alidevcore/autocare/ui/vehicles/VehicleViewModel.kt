@@ -10,8 +10,12 @@ import ir.alidevcore.autocare.data.model.Vehicle
 import ir.alidevcore.autocare.data.repository.VehicleRepository
 import ir.alidevcore.autocare.data.repository.MaintenanceRepository
 import ir.alidevcore.autocare.data.model.relations.ServiceStatus
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 
@@ -47,11 +51,15 @@ class VehicleViewModel @Inject constructor(
             vehicleRepository.getAllVehicles()
                 .catch { e -> _uiState.update { it.copy(error = e.message, isLoading = false) } }
                 .collect { vehicles ->
-                    val cardData = vehicles.map { vehicle ->
-                        val statuses = maintenanceRepository.computeItemStatuses(vehicle.id, vehicle.currentKm)
-                        val overdueCount = statuses.count { it.status == ServiceStatus.OVERDUE }
-                        val upcomingCount = statuses.count { it.status == ServiceStatus.UPCOMING }
-                        VehicleCardData(vehicle, overdueCount, upcomingCount)
+                    val cardData = withContext(Dispatchers.IO) {
+                        vehicles.map { vehicle ->
+                            async {
+                                val statuses = maintenanceRepository.computeItemStatuses(vehicle.id, vehicle.currentKm)
+                                val overdueCount = statuses.count { it.status == ServiceStatus.OVERDUE }
+                                val upcomingCount = statuses.count { it.status == ServiceStatus.UPCOMING }
+                                VehicleCardData(vehicle, overdueCount, upcomingCount)
+                            }
+                        }.awaitAll()
                     }
                     _uiState.update { it.copy(vehicles = cardData, isLoading = false) }
                 }

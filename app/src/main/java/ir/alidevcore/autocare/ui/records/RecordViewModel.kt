@@ -261,7 +261,7 @@ class RecordViewModel @Inject constructor(
         }
 
         val km = NumberUtil.parsePersianNumber(state.kmText)
-        if (km == null || km < 0) {
+        if (km == null || km <= 0) {
             _uiState.update { it.copy(error = "کیلومتر واردشده نامعتبر است") }
             return
         }

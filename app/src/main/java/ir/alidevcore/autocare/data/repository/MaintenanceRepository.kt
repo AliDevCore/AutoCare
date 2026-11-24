@@ -177,7 +177,7 @@ class MaintenanceRepository @Inject constructor(
                     now = now,
                     kmThreshold = kmThreshold,
                     daysThreshold = daysThreshold
-                )!!
+                ) ?: services.first()
             }
 
         return items

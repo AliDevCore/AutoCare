@@ -175,6 +175,6 @@ object JalaliDateUtil {
      */
     fun formatShortDate(timestamp: Long): String {
         val jalali = toJalali(timestamp)
-        return "${toPersianDigits(jalali.year)}/${toPersianDigits(jalali.month).padStart(2, '۰')}/${toPersianDigits(jalali.day).padStart(2, '۰')}"
+        return "${toPersianDigits(jalali.year)}/${toPersianDigits(jalali.month.toString().padStart(2, '0'))}/${toPersianDigits(jalali.day.toString().padStart(2, '0'))}"
     }
 }

@@ -167,7 +167,7 @@ class PlanViewModel @Inject constructor(
                 if (date != null && state.selectedReminderDays.isNotEmpty()) {
                     val reminders = mutableListOf<ReminderSetting>()
                     for (daysBefore in state.selectedReminderDays) {
-                        val notifId = (savedPlanId * 100 + daysBefore).toInt()
+                        val notifId = ((savedPlanId and 0x7FFF).toInt() * 100 + daysBefore)
                         val reminder = ReminderSetting(
                             plannedServiceId = savedPlanId,
                             daysBefore = daysBefore,

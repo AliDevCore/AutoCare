@@ -23,4 +23,11 @@ class NumberUtilTest {
         assertTrue(formatted.contains("کیلومتر"))
         assertTrue(formatted.contains("100") || formatted.contains("۱۰۰"))
     }
+
+    @Test
+    fun testToPersianDigits() {
+        assertEquals("۱۲۳۴۵۶۷۸۹۰", NumberUtil.toPersianDigits("1234567890"))
+        assertEquals("۴۵", NumberUtil.toPersianDigits("45"))
+        assertEquals("۱۴۰۳", NumberUtil.toPersianDigits(1403))
+    }
 }

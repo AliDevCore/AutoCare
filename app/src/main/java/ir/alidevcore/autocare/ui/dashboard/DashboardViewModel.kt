@@ -106,9 +106,11 @@ class DashboardViewModel @Inject constructor(
                 val customCats = allItemsList.map { it.category }.distinct()
                 val categories = (DEFAULT_CATEGORIES + customCats).distinct()
 
+                val itemMap = allItemsList.associateBy { it.id }
+
                 // Map pending plans with item names
                 val pendingPlans = pendingPlansList.map { plan ->
-                    val item = allItemsList.find { it.id == plan.itemId } ?: maintenanceRepository.getItemByIdOnce(plan.itemId)
+                    val item = itemMap[plan.itemId]
                     PlannedServiceDisplay(
                         plan = plan,
                         itemName = item?.name ?: "سرویس دوره‌ای"
@@ -118,7 +120,7 @@ class DashboardViewModel @Inject constructor(
                 // Map records sorted by KM DESCENDING (highest km to lowest)
                 val sortedRecords = allRecordsList.sortedByDescending { it.km }
                 val allRecords = sortedRecords.map { record ->
-                    val item = allItemsList.find { it.id == record.itemId } ?: maintenanceRepository.getItemByIdOnce(record.itemId)
+                    val item = itemMap[record.itemId]
                     RecordDisplay(
                         record = record,
                         itemName = item?.name ?: "نامشخص",

@@ -143,7 +143,7 @@ class DatabaseBackupManager @Inject constructor(
         val timeStr = SimpleDateFormat("HHmmss", Locale.US).format(Date())
         val fileName = "AutoCare_Backup_${String.format("%04d%02d%02d", year, month, day)}_$timeStr.json"
 
-        val backupDir = File(context.cacheDir, "backups").apply { mkdirs() }
+        val backupDir = File(context.filesDir, "backups").apply { mkdirs() }
         val file = File(backupDir, fileName)
 
         FileOutputStream(file).use { fos ->
@@ -188,7 +188,7 @@ class DatabaseBackupManager @Inject constructor(
         val cleanVehicle = vehicleName.replace(Regex("[^a-zA-Z0-9آ-ی]+"), "_").trim('_')
         val fileName = "AutoCare_${cleanVehicle}_${String.format("%04d%02d%02d", year, month, day)}_$timeStr.csv"
 
-        val exportDir = File(context.cacheDir, "exports").apply { mkdirs() }
+        val exportDir = File(context.filesDir, "exports").apply { mkdirs() }
         val file = File(exportDir, fileName)
 
         FileOutputStream(file).use { fos ->
