@@ -62,6 +62,18 @@ class DashboardViewModel @Inject constructor(
 
     val vehicleId: Long = savedStateHandle.get<Long>("vehicleId") ?: 0L
 
+    private val _selectedTab = MutableStateFlow(
+        savedStateHandle.get<String>("selectedTab")?.let {
+            runCatching { DashboardTab.valueOf(it) }.getOrNull()
+        } ?: DashboardTab.STATUS
+    )
+    val selectedTab: StateFlow<DashboardTab> = _selectedTab.asStateFlow()
+
+    fun setSelectedTab(tab: DashboardTab) {
+        _selectedTab.value = tab
+        savedStateHandle["selectedTab"] = tab.name
+    }
+
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 

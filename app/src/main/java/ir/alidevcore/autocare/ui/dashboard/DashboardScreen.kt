@@ -1,6 +1,7 @@
 package ir.alidevcore.autocare.ui.dashboard
 
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -61,7 +62,7 @@ fun DashboardScreen(
     onNavigateToBulkRecord: (itemId: Long?) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var selectedTab by remember { mutableStateOf(DashboardTab.STATUS) }
+    val selectedTab by viewModel.selectedTab.collectAsState()
     var showKmDialog by remember { mutableStateOf(false) }
     var showKmDecreaseWarning by remember { mutableStateOf<Long?>(null) }
     var kmInput by remember { mutableStateOf("") }
@@ -77,6 +78,10 @@ fun DashboardScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    BackHandler(enabled = selectedTab != DashboardTab.STATUS) {
+        viewModel.setSelectedTab(DashboardTab.STATUS)
+    }
+
     DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
@@ -300,7 +305,13 @@ fun DashboardScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = {
+                        if (selectedTab != DashboardTab.STATUS) {
+                            viewModel.setSelectedTab(DashboardTab.STATUS)
+                        } else {
+                            onNavigateBack()
+                        }
+                    }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "تغییر خودرو")
                     }
                 },
@@ -385,7 +396,7 @@ fun DashboardScreen(
                             val selected = selectedTab == tab
                             Tab(
                                 selected = selected,
-                                onClick = { selectedTab = tab },
+                                onClick = { viewModel.setSelectedTab(tab) },
                                 selectedContentColor = MaterialTheme.colorScheme.primary,
                                 unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                 icon = {
@@ -453,7 +464,7 @@ fun DashboardScreen(
                                 item {
                                     MonthlyExpenseCard(
                                         amount = uiState.monthlyTotal,
-                                        onClick = { selectedTab = DashboardTab.EXPENSES }
+                                        onClick = { viewModel.setSelectedTab(DashboardTab.EXPENSES) }
                                     )
                                 }
 
@@ -531,7 +542,7 @@ fun DashboardScreen(
                                     SectionHeader(
                                         title = "آخرین سوابق ثبت‌شده",
                                         actionText = "مشاهده همه",
-                                        onAction = { selectedTab = DashboardTab.HISTORY }
+                                        onAction = { viewModel.setSelectedTab(DashboardTab.HISTORY) }
                                     )
                                 }
 
@@ -557,27 +568,6 @@ fun DashboardScreen(
                             }
 
                             DashboardTab.PLANS -> {
-                                // Add Plan Prominent Button
-                                item {
-                                    Button(
-                                        onClick = { onNavigateToAddPlan(null, null) },
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .defaultMinSize(minHeight = 48.dp),
-                                        shape = RoundedCornerShape(14.dp),
-                                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
-                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                                    ) {
-                                        Icon(Icons.Default.AddCircle, contentDescription = null, modifier = Modifier.size(20.dp))
-                                        Spacer(Modifier.width(8.dp))
-                                        Text(
-                                            "برنامه‌ریزی سرویس آینده جدید",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                }
-
                                 if (uiState.pendingPlans.isEmpty()) {
                                     item {
                                         EmptyState(
