@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ir.alidevcore.autocare.data.model.relations.ServiceStatus
 import ir.alidevcore.autocare.ui.theme.*
+import ir.alidevcore.autocare.util.NumberUtil
 
 /**
  * A card with elevation and rounded corners
@@ -265,7 +266,7 @@ fun CostChip(amount: Long) {
         color = MaterialTheme.colorScheme.secondaryContainer
     ) {
         Text(
-            text = "${ir.alidevcore.autocare.util.NumberUtil.formatNumber(amount)} تومان",
+            text = "${NumberUtil.formatNumber(amount)} تومان",
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold,
