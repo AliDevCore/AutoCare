@@ -390,7 +390,7 @@ fun VehicleCard(
                             Text(
                                 text = "${NumberUtil.toPersianDigits(cardData.overdueCount)} سرویس عقب‌افتاده",
                                 color = StatusOverdue,
-                                fontSize = 11.sp,
+                                fontSize = 12.5.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -417,7 +417,7 @@ fun VehicleCard(
                             Text(
                                 text = "${NumberUtil.toPersianDigits(cardData.upcomingCount)} نزدیک موعد",
                                 color = StatusUpcoming,
-                                fontSize = 11.sp,
+                                fontSize = 12.5.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -443,7 +443,8 @@ fun VehicleCard(
                             Text(
                                 text = "وضعیت سرویس‌ها عادی",
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 11.sp
+                                fontSize = 12.5.sp,
+                                fontWeight = FontWeight.Medium
                             )
                         }
                     }

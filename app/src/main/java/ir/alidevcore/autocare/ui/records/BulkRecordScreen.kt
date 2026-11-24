@@ -319,7 +319,7 @@ fun BulkRecordScreen(
                         ) {
                             Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text("افزودن ردیف", fontSize = 12.sp)
+                            Text("افزودن ردیف", fontSize = 13.5.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -483,7 +483,7 @@ fun BulkRowCard(
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     TextButton(onClick = { expandedDetails = !expandedDetails }) {
-                        Text(if (expandedDetails) "جزئیات کمتر" else "افزودن تاریخ/هزینه/یادداشت", fontSize = 11.sp)
+                        Text(if (expandedDetails) "جزئیات کمتر" else "افزودن تاریخ/هزینه/یادداشت", fontSize = 13.sp, fontWeight = FontWeight.Medium)
                     }
                     IconButton(onClick = onDelete) {
                         Icon(

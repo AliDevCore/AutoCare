@@ -61,9 +61,9 @@ fun StatusBadge(status: ServiceStatus) {
         Text(
             text = text,
             color = textColor,
-            fontSize = 12.sp,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-            fontWeight = FontWeight.Medium
+            fontSize = 12.5.sp,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
+            fontWeight = FontWeight.Bold
         )
     }
 }
@@ -91,7 +91,7 @@ fun SectionHeader(
         )
         if (actionText != null && onAction != null) {
             TextButton(onClick = onAction) {
-                Text(actionText, fontSize = 13.sp)
+                Text(actionText, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -261,8 +261,9 @@ fun CostChip(amount: Long) {
     ) {
         Text(
             text = "${ir.alidevcore.autocare.util.NumberUtil.formatNumber(amount)} تومان",
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSecondaryContainer
         )
     }

@@ -455,7 +455,7 @@ fun RowScope.NextScheduleChip(
     FilterChip(
         selected = selected,
         onClick = onClick,
-        label = { Text(label, fontSize = 12.sp) },
+        label = { Text(label, fontSize = 13.5.sp, fontWeight = FontWeight.Medium) },
         modifier = Modifier.weight(1f)
     )
 }

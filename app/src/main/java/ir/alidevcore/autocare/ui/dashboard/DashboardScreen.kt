@@ -36,24 +36,34 @@ import ir.alidevcore.autocare.util.JalaliDateUtil
 import ir.alidevcore.autocare.util.NumberUtil
 import kotlinx.coroutines.launch
 
+enum class DashboardTab(val title: String, val icon: ImageVector) {
+    STATUS("داشبورد", Icons.Default.DirectionsCar),
+    PLANS("برنامه آینده", Icons.Default.Event),
+    HISTORY("سوابق", Icons.Default.History),
+    ITEMS("اقلام سرویس", Icons.Default.Build),
+    EXPENSES("هزینه‌ها", Icons.Default.MonetizationOn)
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     viewModel: DashboardViewModel,
     onNavigateBack: () -> Unit,
     onNavigateToAddRecord: (itemId: Long?, planId: Long?) -> Unit,
-    onNavigateToAddPlan: (itemId: Long?) -> Unit,
+    onNavigateToAddPlan: (itemId: Long?, planId: Long?) -> Unit,
     onNavigateToHistory: () -> Unit,
     onNavigateToItems: () -> Unit,
     onNavigateToExpenses: () -> Unit,
     onNavigateToBulkRecord: (itemId: Long?) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var selectedTab by remember { mutableStateOf(DashboardTab.STATUS) }
     var showKmDialog by remember { mutableStateOf(false) }
     var showKmDecreaseWarning by remember { mutableStateOf<Long?>(null) }
     var kmInput by remember { mutableStateOf("") }
     var menuExpanded by remember { mutableStateOf(false) }
     var showImportConfirmDialog by remember { mutableStateOf(false) }
+    var planToDelete by remember { mutableStateOf<PlannedServiceDisplay?>(null) }
 
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -83,10 +93,17 @@ fun DashboardScreen(
         }
     }
 
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearError()
+        }
+    }
+
     if (showKmDecreaseWarning != null) {
         AlertDialog(
             onDismissRequest = { showKmDecreaseWarning = null },
-            title = { Text("هشدار کاهش کیلومتر") },
+            title = { Text("هشدار کاهش کیلومتر", fontWeight = FontWeight.Bold) },
             text = {
                 Text("کیلومتر واردشده (${NumberUtil.formatKm(showKmDecreaseWarning!!)}) از کیلومتر فعلی کمتر است. آیا از تغییر کیلومترشمار مطمئن هستید؟")
             },
@@ -109,21 +126,23 @@ fun DashboardScreen(
     }
 
     if (showKmDialog) {
+        val currentKm = uiState.vehicle?.currentKm ?: 0L
         AlertDialog(
             onDismissRequest = { showKmDialog = false },
-            title = { Text("به‌روزرسانی کیلومتر فعلی") },
+            title = { Text("به‌روزرسانی کیلومتر فعلی خودرو", fontWeight = FontWeight.Bold) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column {
                     Text(
-                        text = "کیلومتر فعلی: ${NumberUtil.formatKm(uiState.vehicle?.currentKm ?: 0L)}",
+                        text = "کیلومتر فعلی ثبت‌شده: ${NumberUtil.formatKm(currentKm)}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
                         value = kmInput,
                         onValueChange = { kmInput = it },
                         label = { Text("کیلومتر جدید") },
-                        placeholder = { Text("مثلاً: ۱۳۲۰۰۰") },
+                        placeholder = { Text("مثال: ۱۲۵۰۰۰") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
@@ -131,19 +150,20 @@ fun DashboardScreen(
                 }
             },
             confirmButton = {
-                Button(onClick = {
-                    val parsed = NumberUtil.parsePersianNumber(kmInput)
-                    if (parsed != null && parsed >= 0) {
-                        val current = uiState.vehicle?.currentKm ?: 0L
-                        if (parsed < current) {
-                            showKmDecreaseWarning = parsed
-                        } else {
-                            viewModel.updateCurrentKm(parsed)
-                            showKmDialog = false
+                Button(
+                    onClick = {
+                        val newKm = kmInput.trim().toLongOrNull()
+                        if (newKm != null && newKm >= 0) {
+                            if (newKm < currentKm) {
+                                showKmDecreaseWarning = newKm
+                            } else {
+                                showKmDialog = false
+                                viewModel.updateCurrentKm(newKm)
+                            }
                         }
                     }
-                }) {
-                    Text("ثبت")
+                ) {
+                    Text("ثبت و ذخیره")
                 }
             },
             dismissButton = {
@@ -158,7 +178,7 @@ fun DashboardScreen(
         AlertDialog(
             onDismissRequest = { showImportConfirmDialog = false },
             icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text("بازیابی کل دیتابیس") },
+            title = { Text("بازیابی کل دیتابیس", fontWeight = FontWeight.Bold) },
             text = {
                 Text("توجه: با بازیابی دیتابیس، تمامی خودروها و سوابق فعلی با اطلاعات فایل پشتیبان جایگزین خواهند شد. آیا مطمئن هستید؟")
             },
@@ -181,13 +201,30 @@ fun DashboardScreen(
         )
     }
 
+    if (planToDelete != null) {
+        ConfirmDeleteDialog(
+            title = "حذف برنامه سرویس",
+            message = "آیا از حذف برنامه سرویس «${planToDelete?.itemName}» اطمینان دارید؟ یادآورهای ثبت‌شده نیز لغو خواهند شد.",
+            onConfirm = {
+                val p = planToDelete!!
+                planToDelete = null
+                viewModel.deletePlan(p.plan)
+                scope.launch {
+                    snackbarHostState.showSnackbar("برنامه با موفقیت حذف شد.")
+                }
+            },
+            onDismiss = { planToDelete = null }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
                         text = uiState.vehicle?.name ?: "داشبورد خودرو",
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleLarge
                     )
                 },
                 navigationIcon = {
@@ -249,15 +286,9 @@ fun DashboardScreen(
                 LoadingState()
             } else {
                 val vehicle = uiState.vehicle
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    item {
-                        Spacer(Modifier.height(8.dp))
-                        // 1. Vehicle Header & Mileage Card
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Header card (Always visible on top of all tabs)
+                    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                         VehicleMileageHeaderCard(
                             vehicleName = vehicle?.name ?: "",
                             year = vehicle?.year,
@@ -269,161 +300,473 @@ fun DashboardScreen(
                         )
                     }
 
-                    // 2. Action Shortcuts
-                    item {
-                        ActionShortcutsRow(
-                            onAddRecord = { onNavigateToAddRecord(null, null) },
-                            onAddPlan = { onNavigateToAddPlan(null) },
-                            onHistory = onNavigateToHistory,
-                            onItems = onNavigateToItems
-                        )
+                    // Modern Tab navigation bar
+                    ScrollableTabRow(
+                        selectedTabIndex = selectedTab.ordinal,
+                        edgePadding = 16.dp,
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.primary,
+                        divider = {
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                        }
+                    ) {
+                        DashboardTab.values().forEach { tab ->
+                            val selected = selectedTab == tab
+                            Tab(
+                                selected = selected,
+                                onClick = { selectedTab = tab },
+                                text = {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = tab.title,
+                                            style = if (selected) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
+                                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+                                        )
+                                        if (tab == DashboardTab.PLANS && uiState.pendingPlans.isNotEmpty()) {
+                                            Spacer(Modifier.width(6.dp))
+                                            Surface(
+                                                shape = RoundedCornerShape(50),
+                                                color = MaterialTheme.colorScheme.secondary
+                                            ) {
+                                                Text(
+                                                    text = NumberUtil.toPersianDigits(uiState.pendingPlans.size),
+                                                    color = MaterialTheme.colorScheme.onSecondary,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
+                                                )
+                                            }
+                                        } else if (tab == DashboardTab.STATUS && uiState.overdueItems.isNotEmpty()) {
+                                            Spacer(Modifier.width(6.dp))
+                                            Surface(
+                                                shape = RoundedCornerShape(50),
+                                                color = StatusOverdue
+                                            ) {
+                                                Text(
+                                                    text = NumberUtil.toPersianDigits(uiState.overdueItems.size),
+                                                    color = Color.White,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                },
+                                icon = {
+                                    Icon(
+                                        tab.icon,
+                                        contentDescription = tab.title,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                            )
+                        }
                     }
 
-                    // 2.5 Quick Historical Records Bulk Entry
-                    item {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onNavigateToBulkRecord(null) },
-                            shape = RoundedCornerShape(14.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(14.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(
-                                    modifier = Modifier.weight(1f),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Box(
+                    // Content based on Selected Tab
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        item { Spacer(Modifier.height(4.dp)) }
+
+                        when (selectedTab) {
+                            DashboardTab.STATUS -> {
+                                // 1. Action Shortcuts to switch or perform actions
+                                item {
+                                    ActionShortcutsRow(
+                                        onAddRecord = { onNavigateToAddRecord(null, null) },
+                                        onAddPlan = { selectedTab = DashboardTab.PLANS },
+                                        onHistory = { selectedTab = DashboardTab.HISTORY },
+                                        onItems = { selectedTab = DashboardTab.ITEMS }
+                                    )
+                                }
+
+                                // 2. Quick Historical Records Bulk Entry
+                                item {
+                                    Card(
                                         modifier = Modifier
-                                            .size(40.dp)
-                                            .clip(CircleShape)
-                                            .background(MaterialTheme.colorScheme.tertiary),
-                                        contentAlignment = Alignment.Center
+                                            .fillMaxWidth()
+                                            .clickable { onNavigateToBulkRecord(null) },
+                                        shape = RoundedCornerShape(14.dp),
+                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
                                     ) {
-                                        Icon(
-                                            Icons.AutoMirrored.Filled.PlaylistAdd,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.onTertiary
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(14.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.weight(1f),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(42.dp)
+                                                        .clip(CircleShape)
+                                                        .background(MaterialTheme.colorScheme.tertiary),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Icon(
+                                                        Icons.AutoMirrored.Filled.PlaylistAdd,
+                                                        contentDescription = null,
+                                                        tint = MaterialTheme.colorScheme.onTertiary
+                                                    )
+                                                }
+                                                Spacer(Modifier.width(12.dp))
+                                                Column {
+                                                    Text(
+                                                        text = "ثبت دسته‌جمعی سوابق گذشته",
+                                                        style = MaterialTheme.typography.titleMedium,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                                                    )
+                                                    Text(
+                                                        text = "ورود سریع سوابق گذشته (مانند شمع یا لنت در کیلومترهای مختلف)",
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                                                    )
+                                                }
+                                            }
+                                            Icon(
+                                                Icons.AutoMirrored.Filled.ArrowBack,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onTertiaryContainer
+                                            )
+                                        }
+                                    }
+                                }
+
+                                // 3. Monthly Expense Summary Card
+                                item {
+                                    MonthlyExpenseCard(
+                                        amount = uiState.monthlyTotal,
+                                        onClick = { selectedTab = DashboardTab.EXPENSES }
+                                    )
+                                }
+
+                                // 4. Overdue Services Section
+                                if (uiState.overdueItems.isNotEmpty()) {
+                                    item {
+                                        SectionHeader(
+                                            title = "سرویس‌های عقب‌افتاده (${NumberUtil.toPersianDigits(uiState.overdueItems.size)})"
                                         )
                                     }
-                                    Spacer(Modifier.width(12.dp))
-                                    Column {
-                                        Text(
-                                            text = "ثبت دسته‌جمعی سوابق گذشته",
-                                            style = MaterialTheme.typography.titleSmall,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onTertiaryContainer
-                                        )
-                                        Text(
-                                            text = "ورود سریع سوابق گذشته (مانند شمع یا لنت در کیلومترهای مختلف)",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                                    items(uiState.overdueItems, key = { "overdue_${it.itemId}" }) { item ->
+                                        ServiceStatusCard(
+                                            item = item,
+                                            currentKm = vehicle?.currentKm ?: 0L,
+                                            onRecordService = { onNavigateToAddRecord(item.itemId, null) }
                                         )
                                     }
                                 }
-                                Icon(
-                                    Icons.AutoMirrored.Filled.ArrowBack,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onTertiaryContainer
-                                )
+
+                                // 5. Upcoming Services Section
+                                if (uiState.upcomingItems.isNotEmpty()) {
+                                    item {
+                                        SectionHeader(
+                                            title = "سرویس‌های نزدیک به موعد (${NumberUtil.toPersianDigits(uiState.upcomingItems.size)})"
+                                        )
+                                    }
+                                    items(uiState.upcomingItems, key = { "upcoming_${it.itemId}" }) { item ->
+                                        ServiceStatusCard(
+                                            item = item,
+                                            currentKm = vehicle?.currentKm ?: 0L,
+                                            onRecordService = { onNavigateToAddRecord(item.itemId, null) }
+                                        )
+                                    }
+                                }
+
+                                // Healthy state
+                                if (uiState.overdueItems.isEmpty() && uiState.upcomingItems.isEmpty()) {
+                                    item {
+                                        Card(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            shape = RoundedCornerShape(16.dp),
+                                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(16.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.CheckCircle,
+                                                    contentDescription = null,
+                                                    tint = StatusOk,
+                                                    modifier = Modifier.size(36.dp)
+                                                )
+                                                Spacer(Modifier.width(12.dp))
+                                                Column {
+                                                    Text(
+                                                        text = "وضعیت خودرو عالی است!",
+                                                        style = MaterialTheme.typography.titleMedium,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = StatusOk
+                                                    )
+                                                    Text(
+                                                        text = "در حال حاضر هیچ سرویسی سررسید نشده یا به موعد نرسیده است.",
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // 6. Recent Records preview
+                                item {
+                                    SectionHeader(
+                                        title = "آخرین سوابق ثبت‌شده",
+                                        actionText = "مشاهده همه سوابق",
+                                        onAction = { selectedTab = DashboardTab.HISTORY }
+                                    )
+                                }
+
+                                if (uiState.recentRecords.isEmpty()) {
+                                    item {
+                                        Card(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                        ) {
+                                            Text(
+                                                text = "هنوز سابقه‌ای برای این خودرو ثبت نشده است.",
+                                                modifier = Modifier.padding(16.dp),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    items(uiState.recentRecords, key = { "rec_${it.record.id}" }) { recordDisplay ->
+                                        RecentRecordCard(recordDisplay = recordDisplay)
+                                    }
+                                }
+                            }
+
+                            DashboardTab.PLANS -> {
+                                // Add Plan Prominent Button
+                                item {
+                                    Button(
+                                        onClick = { onNavigateToAddPlan(null, null) },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(54.dp),
+                                        shape = RoundedCornerShape(14.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                                    ) {
+                                        Icon(Icons.Default.AddCircle, contentDescription = null, modifier = Modifier.size(22.dp))
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(
+                                            "برنامه‌ریزی سرویس آینده جدید",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+
+                                if (uiState.pendingPlans.isEmpty()) {
+                                    item {
+                                        EmptyState(
+                                            icon = Icons.Default.EventAvailable,
+                                            title = "هیچ برنامه آینده‌ای ثبت نشده است",
+                                            description = "با ثبت برنامه آینده می‌توانید برای تعویض روغن، تسمه تایم، لنت یا سرویس‌های دوره‌ای یادآور کیلومتری یا زمانی تعیین کنید.",
+                                            actionText = "ثبت اولین برنامه آینده",
+                                            onAction = { onNavigateToAddPlan(null, null) }
+                                        )
+                                    }
+                                } else {
+                                    item {
+                                        SectionHeader(
+                                            title = "لیست برنامه‌های آینده (${NumberUtil.toPersianDigits(uiState.pendingPlans.size)})",
+                                            actionText = "افزودن برنامه",
+                                            onAction = { onNavigateToAddPlan(null, null) }
+                                        )
+                                    }
+
+                                    items(uiState.pendingPlans, key = { "plan_${it.plan.id}" }) { planDisplay ->
+                                        PlannedServiceCard(
+                                            planDisplay = planDisplay,
+                                            onConvert = {
+                                                onNavigateToAddRecord(planDisplay.plan.itemId, planDisplay.plan.id)
+                                            },
+                                            onEdit = {
+                                                onNavigateToAddPlan(null, planDisplay.plan.id)
+                                            },
+                                            onDelete = {
+                                                planToDelete = planDisplay
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+
+                            DashboardTab.HISTORY -> {
+                                item {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Button(
+                                            onClick = { onNavigateToAddRecord(null, null) },
+                                            modifier = Modifier.weight(1f).height(50.dp),
+                                            shape = RoundedCornerShape(12.dp)
+                                        ) {
+                                            Icon(Icons.Default.Add, contentDescription = null)
+                                            Spacer(Modifier.width(6.dp))
+                                            Text("ثبت سرویس جدید", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                        OutlinedButton(
+                                            onClick = { onNavigateToBulkRecord(null) },
+                                            modifier = Modifier.weight(1f).height(50.dp),
+                                            shape = RoundedCornerShape(12.dp)
+                                        ) {
+                                            Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = null)
+                                            Spacer(Modifier.width(6.dp))
+                                            Text("ثبت دسته‌جمعی", fontSize = 14.sp)
+                                        }
+                                    }
+                                }
+
+                                item {
+                                    FilledTonalButton(
+                                        onClick = onNavigateToHistory,
+                                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Icon(Icons.Default.Search, contentDescription = null)
+                                        Spacer(Modifier.width(8.dp))
+                                        Text("جستجو، فیلتر و خروجی اکسل در صفحه کامل سوابق", fontSize = 14.sp)
+                                    }
+                                }
+
+                                item {
+                                    SectionHeader(
+                                        title = "آخرین سوابق ثبت‌شده خودرو",
+                                        actionText = "صفحه کامل سوابق",
+                                        onAction = onNavigateToHistory
+                                    )
+                                }
+
+                                if (uiState.recentRecords.isEmpty()) {
+                                    item {
+                                        EmptyState(
+                                            icon = Icons.Default.History,
+                                            title = "هیچ سابقه سرویسی وجود ندارد",
+                                            description = "برای این خودرو هنوز سابقه سرویسی ثبت نشده است.",
+                                            actionText = "ثبت اولین سابقه سرویس",
+                                            onAction = { onNavigateToAddRecord(null, null) }
+                                        )
+                                    }
+                                } else {
+                                    items(uiState.recentRecords, key = { "rec_${it.record.id}" }) { recordDisplay ->
+                                        RecentRecordCard(recordDisplay = recordDisplay)
+                                    }
+                                }
+                            }
+
+                            DashboardTab.ITEMS -> {
+                                item {
+                                    Button(
+                                        onClick = onNavigateToItems,
+                                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                                        shape = RoundedCornerShape(14.dp)
+                                    ) {
+                                        Icon(Icons.Default.Build, contentDescription = null)
+                                        Spacer(Modifier.width(8.dp))
+                                        Text("مدیریت و افزودن اقلام سرویس جدید", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+
+                                item {
+                                    SectionHeader(
+                                        title = "اقلام سرویس و قطعات فعال",
+                                        actionText = "مشاهده تمام اقلام",
+                                        onAction = onNavigateToItems
+                                    )
+                                }
+
+                                val allItems = uiState.overdueItems + uiState.upcomingItems
+                                if (allItems.isEmpty()) {
+                                    item {
+                                        Card(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                        ) {
+                                            Text(
+                                                text = "اقلام سرویس استاندارد برای این خودرو فعال هستند. برای شخصی‌سازی دوره‌ها دکمه مدیریت را لمس کنید.",
+                                                modifier = Modifier.padding(16.dp),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    items(allItems, key = { "item_stat_${it.itemId}" }) { item ->
+                                        ServiceStatusCard(
+                                            item = item,
+                                            currentKm = vehicle?.currentKm ?: 0L,
+                                            onRecordService = { onNavigateToAddRecord(item.itemId, null) }
+                                        )
+                                    }
+                                }
+                            }
+
+                            DashboardTab.EXPENSES -> {
+                                item {
+                                    MonthlyExpenseCard(
+                                        amount = uiState.monthlyTotal,
+                                        onClick = onNavigateToExpenses
+                                    )
+                                }
+
+                                item {
+                                    Button(
+                                        onClick = onNavigateToExpenses,
+                                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                                        shape = RoundedCornerShape(14.dp)
+                                    ) {
+                                        Icon(Icons.Default.Analytics, contentDescription = null)
+                                        Spacer(Modifier.width(8.dp))
+                                        Text("مشاهده گزارش تحلیلی کامل هزینه‌ها و نمودارها", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+
+                                item {
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(16.dp),
+                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                    ) {
+                                        Column(modifier = Modifier.padding(16.dp)) {
+                                            Text(
+                                                text = "راهنمای هزینه‌ها",
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Spacer(Modifier.height(8.dp))
+                                            Text(
+                                                text = "در صفحه کامل گزارش هزینه‌ها، می‌توانید تفکیک هزینه‌ها بر اساس قطعه، دسته‌بندی و بازه زمانی را به همراه نمودار مشاهده کرده و خروجی اکسل دریافت کنید.",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
-                    }
 
-                    // 3. Monthly Expense Summary Card
-                    item {
-                        MonthlyExpenseCard(
-                            amount = uiState.monthlyTotal,
-                            onClick = onNavigateToExpenses
-                        )
-                    }
-
-                    // 4. Overdue Services Section
-                    if (uiState.overdueItems.isNotEmpty()) {
                         item {
-                            SectionHeader(
-                                title = "سرویس‌های عقب‌افتاده (${NumberUtil.toPersianDigits(uiState.overdueItems.size)})"
-                            )
+                            Spacer(Modifier.height(36.dp))
                         }
-                        items(uiState.overdueItems, key = { "overdue_${it.itemId}" }) { item ->
-                            ServiceStatusCard(
-                                item = item,
-                                currentKm = vehicle?.currentKm ?: 0L,
-                                onRecordService = { onNavigateToAddRecord(item.itemId, null) }
-                            )
-                        }
-                    }
-
-                    // 5. Upcoming Services Section
-                    if (uiState.upcomingItems.isNotEmpty()) {
-                        item {
-                            SectionHeader(
-                                title = "سرویس‌های نزدیک به موعد (${NumberUtil.toPersianDigits(uiState.upcomingItems.size)})"
-                            )
-                        }
-                        items(uiState.upcomingItems, key = { "upcoming_${it.itemId}" }) { item ->
-                            ServiceStatusCard(
-                                item = item,
-                                currentKm = vehicle?.currentKm ?: 0L,
-                                onRecordService = { onNavigateToAddRecord(item.itemId, null) }
-                            )
-                        }
-                    }
-
-                    // 6. Future Planned Services
-                    if (uiState.pendingPlans.isNotEmpty()) {
-                        item {
-                            SectionHeader(
-                                title = "برنامه‌های آینده (${NumberUtil.toPersianDigits(uiState.pendingPlans.size)})",
-                                actionText = "افزودن",
-                                onAction = { onNavigateToAddPlan(null) }
-                            )
-                        }
-                        items(uiState.pendingPlans, key = { "plan_${it.plan.id}" }) { planDisplay ->
-                            PlannedServiceCard(
-                                planDisplay = planDisplay,
-                                onConvert = { onNavigateToAddRecord(planDisplay.plan.itemId, planDisplay.plan.id) }
-                            )
-                        }
-                    }
-
-                    // 7. Recent Records
-                    item {
-                        SectionHeader(
-                            title = "آخرین سوابق ثبت‌شده",
-                            actionText = "مشاهده همه",
-                            onAction = onNavigateToHistory
-                        )
-                    }
-
-                    if (uiState.recentRecords.isEmpty()) {
-                        item {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                            ) {
-                                Text(
-                                    text = "هنوز سابقه‌ای برای این خودرو ثبت نشده است.",
-                                    modifier = Modifier.padding(16.dp),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    } else {
-                        items(uiState.recentRecords, key = { "rec_${it.record.id}" }) { recordDisplay ->
-                            RecentRecordCard(recordDisplay = recordDisplay)
-                        }
-                    }
-
-                    item {
-                        Spacer(Modifier.height(32.dp))
                     }
                 }
             }
@@ -444,7 +787,7 @@ fun VehicleMileageHeaderCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
+        Column(modifier = Modifier.padding(18.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -460,8 +803,8 @@ fun VehicleMileageHeaderCard(
                     if (year != null) {
                         Text(
                             text = "مدل: ${NumberUtil.toPersianDigits(year.toString())}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
                         )
                     }
                 }
@@ -475,15 +818,15 @@ fun VehicleMileageHeaderCard(
                 ) {
                     Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("ویرایش کیلومتر", fontSize = 12.sp)
+                    Text("ویرایش کیلومتر", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(14.dp))
 
             Surface(
                 shape = RoundedCornerShape(14.dp),
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -593,7 +936,7 @@ fun ShortcutButton(
             Spacer(Modifier.height(6.dp))
             Text(
                 text = label,
-                fontSize = 11.sp,
+                fontSize = 12.5.sp,
                 fontWeight = FontWeight.Medium,
                 color = contentColor,
                 maxLines = 1
@@ -625,7 +968,7 @@ fun MonthlyExpenseCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(42.dp)
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.secondaryContainer),
                     contentAlignment = Alignment.Center
@@ -671,12 +1014,12 @@ fun ServiceStatusCard(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = androidx.compose.foundation.BorderStroke(1.dp, borderColor.copy(alpha = 0.6f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -702,8 +1045,9 @@ fun ServiceStatusCard(
                 }
                 Text(
                     text = "کیلومتر هدف: $kmLabel",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (diffKm < 0) StatusOverdue else MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (diffKm < 0) StatusOverdue else MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Medium
                 )
             }
 
@@ -716,12 +1060,12 @@ fun ServiceStatusCard(
                 }
                 Text(
                     text = "تاریخ هدف: $dateLabel",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = if (diffDays < 0) StatusOverdue else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(12.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -733,11 +1077,11 @@ fun ServiceStatusCard(
                         containerColor = if (isOverdue) StatusOverdue else StatusUpcoming
                     ),
                     shape = RoundedCornerShape(10.dp),
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
                 ) {
-                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("ثبت انجام سرویس", fontSize = 12.sp)
+                    Text("ثبت انجام سرویس", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -747,16 +1091,18 @@ fun ServiceStatusCard(
 @Composable
 fun PlannedServiceCard(
     planDisplay: PlannedServiceDisplay,
-    onConvert: () -> Unit
+    onConvert: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
 ) {
     val plan = planDisplay.plan
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -766,7 +1112,7 @@ fun PlannedServiceCard(
                     Icon(
                         Icons.Default.BuildCircle,
                         contentDescription = null,
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(22.dp),
                         tint = MaterialTheme.colorScheme.primary
                     )
                     Spacer(Modifier.width(8.dp))
@@ -784,13 +1130,14 @@ fun PlannedServiceCard(
                     Text(
                         text = "برنامه‌ریزی‌شده",
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
-                        fontSize = 11.sp,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
                     )
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(10.dp))
 
             if (plan.targetKm != null) {
                 Text(
@@ -804,34 +1151,66 @@ fun PlannedServiceCard(
             if (plan.targetDate != null) {
                 Text(
                     text = "تاریخ هدف: ${JalaliDateUtil.timestampToJalaliStringWithMonthName(plan.targetDate)}",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
-            // Exclude auto-generated calculation message completely
             if (plan.notes.isNotBlank() && !plan.notes.contains("محاسبه خودکار")) {
+                Spacer(Modifier.height(4.dp))
                 Text(
                     text = "یادداشت: ${plan.notes}",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(14.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+            Spacer(Modifier.height(8.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                OutlinedButton(
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    // Delete button
+                    IconButton(
+                        onClick = onDelete,
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "حذف برنامه",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    // Edit button
+                    IconButton(
+                        onClick = onEdit,
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = "ویرایش برنامه",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+
+                // Convert button
+                FilledTonalButton(
                     onClick = onConvert,
                     shape = RoundedCornerShape(10.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                 ) {
                     Icon(Icons.Default.DoneAll, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("تبدیل به سرویس انجام‌شده", fontSize = 12.sp)
+                    Text("تبدیل به سرویس انجام‌شده", fontSize = 12.5.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -842,7 +1221,7 @@ fun PlannedServiceCard(
 fun RecentRecordCard(recordDisplay: RecordDisplay) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
@@ -862,7 +1241,7 @@ fun RecentRecordCard(recordDisplay: RecordDisplay) {
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = "${recordDisplay.dateDisplay} • ${NumberUtil.formatKm(recordDisplay.record.km)}",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }

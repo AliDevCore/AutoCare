@@ -262,7 +262,7 @@ fun RecordsHistoryScreen(
                 ) {
                     Icon(Icons.Default.Speed, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("بازه کیلومتر", fontSize = 12.sp)
+                    Text("بازه کیلومتر", fontSize = 13.5.sp, fontWeight = FontWeight.Medium)
                 }
 
                 // Date Filter button
@@ -277,13 +277,14 @@ fun RecordsHistoryScreen(
                     Spacer(Modifier.width(4.dp))
                     Text(
                         if (uiState.fromDate != null) "از ${JalaliDateUtil.formatShortDate(uiState.fromDate!!)}" else "بازه تاریخ",
-                        fontSize = 12.sp
+                        fontSize = 13.5.sp,
+                        fontWeight = FontWeight.Medium
                     )
                 }
 
                 if (uiState.fromDate != null || uiState.toDate != null || uiState.fromKm != null || uiState.toKm != null || uiState.selectedCategory != null) {
                     TextButton(onClick = { viewModel.clearFilters() }) {
-                        Text("حذف همه فیلترها", fontSize = 12.sp, color = MaterialTheme.colorScheme.error)
+                        Text("حذف همه فیلترها", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
                     }
                 }
             }

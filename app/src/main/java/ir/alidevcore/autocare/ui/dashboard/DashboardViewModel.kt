@@ -13,7 +13,9 @@ import ir.alidevcore.autocare.data.model.Vehicle
 import ir.alidevcore.autocare.data.model.relations.ItemWithLastRecord
 import ir.alidevcore.autocare.data.model.relations.ServiceStatus
 import ir.alidevcore.autocare.data.repository.MaintenanceRepository
+import ir.alidevcore.autocare.data.repository.ReminderRepository
 import ir.alidevcore.autocare.data.repository.VehicleRepository
+import ir.alidevcore.autocare.notification.ReminderScheduler
 import ir.alidevcore.autocare.util.JalaliDateUtil
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -47,6 +49,8 @@ data class PlannedServiceDisplay(
 class DashboardViewModel @Inject constructor(
     private val vehicleRepository: VehicleRepository,
     private val maintenanceRepository: MaintenanceRepository,
+    private val reminderRepository: ReminderRepository,
+    private val reminderScheduler: ReminderScheduler,
     private val backupManager: DatabaseBackupManager,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -57,6 +61,10 @@ class DashboardViewModel @Inject constructor(
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 
     init {
+        loadDashboard()
+    }
+
+    fun refreshDashboard() {
         loadDashboard()
     }
 
@@ -118,6 +126,26 @@ class DashboardViewModel @Inject constructor(
                         )
                     }
                 }
+        }
+    }
+
+    fun deletePlan(plan: PlannedService) {
+        viewModelScope.launch {
+            try {
+                val oldReminders = reminderRepository.getRemindersForServiceOnce(plan.id)
+                oldReminders.forEach { reminderScheduler.cancelReminder(it.notificationId) }
+                reminderRepository.deleteRemindersForService(plan.id)
+                maintenanceRepository.deletePlannedService(plan)
+                
+                // Immediately remove from uiState so UI updates immediately
+                _uiState.update { current ->
+                    current.copy(
+                        pendingPlans = current.pendingPlans.filter { it.plan.id != plan.id }
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "خطا در حذف برنامه: ${e.message}") }
+            }
         }
     }
 

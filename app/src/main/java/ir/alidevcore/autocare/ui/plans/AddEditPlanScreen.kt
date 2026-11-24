@@ -28,6 +28,7 @@ fun AddEditPlanScreen(
     val uiState by viewModel.uiState.collectAsState()
     var showDatePicker by remember { mutableStateOf(false) }
     var itemMenuExpanded by remember { mutableStateOf(false) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -55,11 +56,34 @@ fun AddEditPlanScreen(
         )
     }
 
+    if (showDeleteConfirmDialog) {
+        ConfirmDeleteDialog(
+            title = "حذف برنامه سرویس",
+            message = "آیا از حذف این برنامه سرویس اطمینان دارید؟ یادآورهای ثبت‌شده نیز لغو خواهند شد.",
+            onConfirm = {
+                showDeleteConfirmDialog = false
+                viewModel.deletePlan()
+            },
+            onDismiss = { showDeleteConfirmDialog = false }
+        )
+    }
+
     Scaffold(
         topBar = {
             AutoCareTopBar(
                 title = if (uiState.isEditing) "ویرایش برنامه سرویس آینده" else "برنامه‌ریزی سرویس آینده",
-                onNavigateBack = onNavigateBack
+                onNavigateBack = onNavigateBack,
+                actions = {
+                    if (uiState.isEditing) {
+                        IconButton(onClick = { showDeleteConfirmDialog = true }) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "حذف برنامه",
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
+                    }
+                }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -218,6 +242,24 @@ fun AddEditPlanScreen(
                     Icon(Icons.Default.Save, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
                     Text(if (uiState.isEditing) "ذخیره تغییرات" else "ثبت برنامه سرویس", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
+
+                if (uiState.isEditing) {
+                    OutlinedButton(
+                        onClick = { showDeleteConfirmDialog = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error)
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                        Spacer(Modifier.width(8.dp))
+                        Text("حذف این برنامه", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                    }
                 }
             }
         }

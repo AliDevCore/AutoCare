@@ -175,8 +175,8 @@ fun PeriodTab(
                 title,
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center,
-                fontSize = 12.sp,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+                fontSize = 13.5.sp,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
             )
         },
         modifier = modifier
@@ -236,8 +236,8 @@ fun TotalExpenseCard(
                 Spacer(Modifier.width(6.dp))
                 Text(
                     text = "محاسبه‌شده از ${NumberUtil.toPersianDigits(costedCount)} سابقه دارای مبلغ (از مجموع ${NumberUtil.toPersianDigits(totalCount)} سابقه)",
-                    fontSize = 11.sp,
-                    color = Color.White.copy(alpha = 0.85f)
+                    fontSize = 13.sp,
+                    color = Color.White.copy(alpha = 0.9f)
                 )
             }
         }

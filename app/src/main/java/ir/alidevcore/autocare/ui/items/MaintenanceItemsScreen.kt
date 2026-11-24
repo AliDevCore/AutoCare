@@ -237,8 +237,9 @@ fun ItemRowCard(
                             ) {
                                 Text(
                                     text = "غیرفعال",
-                                    fontSize = 10.sp,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
