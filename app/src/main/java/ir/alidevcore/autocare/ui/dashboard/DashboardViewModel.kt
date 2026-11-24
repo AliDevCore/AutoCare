@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import ir.alidevcore.autocare.data.backup.BackupStats
 import ir.alidevcore.autocare.data.backup.DatabaseBackupManager
+import ir.alidevcore.autocare.data.model.MaintenanceItem
 import ir.alidevcore.autocare.data.model.MaintenanceRecord
 import ir.alidevcore.autocare.data.model.PlannedService
 import ir.alidevcore.autocare.data.model.Vehicle
@@ -16,6 +17,7 @@ import ir.alidevcore.autocare.data.repository.MaintenanceRepository
 import ir.alidevcore.autocare.data.repository.ReminderRepository
 import ir.alidevcore.autocare.data.repository.VehicleRepository
 import ir.alidevcore.autocare.notification.ReminderScheduler
+import ir.alidevcore.autocare.ui.items.DEFAULT_CATEGORIES
 import ir.alidevcore.autocare.util.JalaliDateUtil
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -26,11 +28,14 @@ data class DashboardUiState(
     val vehicle: Vehicle? = null,
     val overdueItems: List<ItemWithLastRecord> = emptyList(),
     val upcomingItems: List<ItemWithLastRecord> = emptyList(),
+    val allItems: List<MaintenanceItem> = emptyList(),
+    val categories: List<String> = emptyList(),
     val recentRecords: List<RecordDisplay> = emptyList(),
     val pendingPlans: List<PlannedServiceDisplay> = emptyList(),
     val monthlyTotal: Long = 0L,
     val isLoading: Boolean = true,
     val error: String? = null,
+    val message: String? = null,
     val showKmUpdateSuccess: Boolean = false
 )
 
@@ -55,7 +60,7 @@ class DashboardViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val vehicleId: Long = savedStateHandle.get<Long>("vehicleId") ?: 0L
+    val vehicleId: Long = savedStateHandle.get<Long>("vehicleId") ?: 0L
 
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
@@ -75,31 +80,35 @@ class DashboardViewModel @Inject constructor(
         loadJob = viewModelScope.launch {
             combine(
                 vehicleRepository.getVehicleById(vehicleId).filterNotNull(),
-                maintenanceRepository.getActiveItemsForVehicle(vehicleId),
+                maintenanceRepository.getAllItemsForVehicle(vehicleId),
                 maintenanceRepository.getPendingServicesForVehicle(vehicleId),
                 maintenanceRepository.getRecentRecordsForVehicle(vehicleId, 5)
-            ) { vehicle, activeItems, pendingPlansList, recentRecordsList ->
+            ) { vehicle, allItemsList, pendingPlansList, recentRecordsList ->
                 // Compute item statuses
                 val itemStatuses = maintenanceRepository.computeItemStatuses(vehicle.id, vehicle.currentKm)
                 val overdueItems = itemStatuses.filter { it.status == ServiceStatus.OVERDUE }
                 val upcomingItems = itemStatuses.filter { it.status == ServiceStatus.UPCOMING }
 
+                // Map categories
+                val customCats = allItemsList.map { it.category }.distinct()
+                val categories = (DEFAULT_CATEGORIES + customCats).distinct()
+
                 // Map pending plans with item names
                 val pendingPlans = pendingPlansList.map { plan ->
-                    val item = activeItems.find { it.id == plan.itemId } ?: maintenanceRepository.getItemByIdOnce(plan.itemId)
+                    val item = allItemsList.find { it.id == plan.itemId } ?: maintenanceRepository.getItemByIdOnce(plan.itemId)
                     PlannedServiceDisplay(
                         plan = plan,
                         itemName = item?.name ?: "سرویس دوره‌ای"
                     )
                 }
 
-                // Map recent records with item names
+                // Map recent records with item names (clean date or empty if no date)
                 val recentRecords = recentRecordsList.map { record ->
-                    val item = activeItems.find { it.id == record.itemId } ?: maintenanceRepository.getItemByIdOnce(record.itemId)
+                    val item = allItemsList.find { it.id == record.itemId } ?: maintenanceRepository.getItemByIdOnce(record.itemId)
                     RecordDisplay(
                         record = record,
                         itemName = item?.name ?: "نامشخص",
-                        dateDisplay = record.date?.let { JalaliDateUtil.timestampToJalaliStringWithMonthName(it) } ?: "فقط کارکرد"
+                        dateDisplay = record.date?.let { JalaliDateUtil.timestampToJalaliStringWithMonthName(it) } ?: ""
                     )
                 }
 
@@ -115,6 +124,8 @@ class DashboardViewModel @Inject constructor(
                     vehicle = vehicle,
                     overdueItems = overdueItems,
                     upcomingItems = upcomingItems,
+                    allItems = allItemsList,
+                    categories = categories,
                     recentRecords = recentRecords,
                     pendingPlans = pendingPlans,
                     monthlyTotal = monthlyTotal,
@@ -177,6 +188,58 @@ class DashboardViewModel @Inject constructor(
 
     fun clearKmUpdateSuccess() {
         _uiState.update { it.copy(showKmUpdateSuccess = false) }
+    }
+
+    fun addItem(
+        name: String,
+        category: String,
+        intervalKm: Long?,
+        intervalMonths: Int?,
+        description: String
+    ) {
+        viewModelScope.launch {
+            try {
+                val item = MaintenanceItem(
+                    vehicleId = vehicleId,
+                    name = name.trim(),
+                    category = category.trim(),
+                    intervalKm = intervalKm,
+                    intervalMonths = intervalMonths,
+                    description = description.trim(),
+                    isActive = true
+                )
+                maintenanceRepository.insertItem(item)
+                _uiState.update { it.copy(message = "قلم با موفقیت اضافه شد") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "خطا در ثبت: ${e.message}") }
+            }
+        }
+    }
+
+    fun updateItem(item: MaintenanceItem) {
+        viewModelScope.launch {
+            try {
+                maintenanceRepository.updateItem(item)
+                _uiState.update { it.copy(message = "قلم با موفقیت ویرایش شد") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "خطا در ویرایش: ${e.message}") }
+            }
+        }
+    }
+
+    fun deleteItem(item: MaintenanceItem) {
+        viewModelScope.launch {
+            try {
+                maintenanceRepository.deleteItem(item)
+                _uiState.update { it.copy(message = "قلم با موفقیت حذف شد") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "خطا در حذف: ${e.message}") }
+            }
+        }
+    }
+
+    fun clearMessages() {
+        _uiState.update { it.copy(message = null, error = null) }
     }
 
     fun clearError() {

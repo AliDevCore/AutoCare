@@ -437,7 +437,7 @@ fun RecordDetailCard(
                     Spacer(Modifier.width(4.dp))
                     val dateText = recordInfo.record.date?.let {
                         JalaliDateUtil.timestampToJalaliStringWithMonthName(it)
-                    } ?: "تاریخ نامشخص (فقط کارکرد)"
+                    } ?: "ثبت‌شده بر اساس کارکرد"
                     Text(
                         text = dateText,
                         style = MaterialTheme.typography.bodySmall,

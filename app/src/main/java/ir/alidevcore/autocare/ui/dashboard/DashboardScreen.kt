@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,10 +28,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import ir.alidevcore.autocare.data.model.MaintenanceItem
 import ir.alidevcore.autocare.data.model.PlannedService
 import ir.alidevcore.autocare.data.model.relations.ItemWithLastRecord
 import ir.alidevcore.autocare.data.model.relations.ServiceStatus
 import ir.alidevcore.autocare.ui.components.*
+import ir.alidevcore.autocare.ui.items.AddEditItemDialog
+import ir.alidevcore.autocare.ui.items.ItemRowCard
 import ir.alidevcore.autocare.ui.theme.*
 import ir.alidevcore.autocare.util.JalaliDateUtil
 import ir.alidevcore.autocare.util.NumberUtil
@@ -64,6 +68,10 @@ fun DashboardScreen(
     var menuExpanded by remember { mutableStateOf(false) }
     var showImportConfirmDialog by remember { mutableStateOf(false) }
     var planToDelete by remember { mutableStateOf<PlannedServiceDisplay?>(null) }
+    var showAddItemDialog by remember { mutableStateOf(false) }
+    var itemToEdit by remember { mutableStateOf<MaintenanceItem?>(null) }
+    var itemToDelete by remember { mutableStateOf<MaintenanceItem?>(null) }
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
 
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -110,6 +118,13 @@ fun DashboardScreen(
         uiState.error?.let {
             snackbarHostState.showSnackbar(it)
             viewModel.clearError()
+        }
+    }
+
+    LaunchedEffect(uiState.message) {
+        uiState.message?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearMessages()
         }
     }
 
@@ -230,6 +245,50 @@ fun DashboardScreen(
         )
     }
 
+    if (showAddItemDialog) {
+        AddEditItemDialog(
+            availableCategories = uiState.categories,
+            onDismiss = { showAddItemDialog = false },
+            onSave = { name, category, km, months, desc, _ ->
+                viewModel.addItem(name, category, km, months, desc)
+                showAddItemDialog = false
+            }
+        )
+    }
+
+    itemToEdit?.let { item ->
+        AddEditItemDialog(
+            item = item,
+            availableCategories = uiState.categories,
+            onDismiss = { itemToEdit = null },
+            onSave = { name, category, km, months, desc, active ->
+                viewModel.updateItem(
+                    item.copy(
+                        name = name,
+                        category = category,
+                        intervalKm = km,
+                        intervalMonths = months,
+                        description = desc,
+                        isActive = active
+                    )
+                )
+                itemToEdit = null
+            }
+        )
+    }
+
+    itemToDelete?.let { item ->
+        ConfirmDeleteDialog(
+            title = "حذف قلم «${item.name}»",
+            message = "آیا از حذف این قلم اطمینان دارید؟ تمام سوابق و برنامه‌های مرتبط با این قلم نیز حذف خواهند شد.",
+            onConfirm = {
+                viewModel.deleteItem(item)
+                itemToDelete = null
+            },
+            onDismiss = { itemToDelete = null }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -327,6 +386,8 @@ fun DashboardScreen(
                             Tab(
                                 selected = selected,
                                 onClick = { selectedTab = tab },
+                                selectedContentColor = MaterialTheme.colorScheme.primary,
+                                unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                 icon = {
                                     BadgedBox(
                                         badge = {
@@ -358,6 +419,7 @@ fun DashboardScreen(
                                         Icon(
                                             tab.icon,
                                             contentDescription = tab.title,
+                                            tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier.size(20.dp)
                                         )
                                     }
@@ -365,10 +427,11 @@ fun DashboardScreen(
                                 text = {
                                     Text(
                                         text = tab.title,
-                                        style = if (selected) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodySmall,
-                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                        fontWeight = FontWeight.Medium,
+                                        fontSize = 11.sp,
                                         maxLines = 1,
-                                        fontSize = 11.5.sp
+                                        softWrap = false,
+                                        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             )
@@ -627,48 +690,82 @@ fun DashboardScreen(
                             DashboardTab.ITEMS -> {
                                 item {
                                     Button(
-                                        onClick = onNavigateToItems,
+                                        onClick = { showAddItemDialog = true },
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .defaultMinSize(minHeight = 48.dp),
                                         shape = RoundedCornerShape(14.dp),
-                                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp)
+                                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                                     ) {
-                                        Icon(Icons.Default.Build, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        Icon(Icons.Default.AddCircle, contentDescription = null, modifier = Modifier.size(20.dp))
                                         Spacer(Modifier.width(8.dp))
-                                        Text("مدیریت و افزودن اقلام سرویس", fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                                        Text(
+                                            "افزودن قلم سرویس جدید",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
                                     }
+                                }
+
+                                if (uiState.categories.isNotEmpty()) {
+                                    item {
+                                        LazyRow(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            contentPadding = PaddingValues(vertical = 4.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            item {
+                                                FilterChip(
+                                                    selected = selectedCategory == null,
+                                                    onClick = { selectedCategory = null },
+                                                    label = { Text("همه دسته‌ها") }
+                                                )
+                                            }
+                                            items(uiState.categories) { cat ->
+                                                FilterChip(
+                                                    selected = selectedCategory == cat,
+                                                    onClick = {
+                                                        selectedCategory = if (selectedCategory == cat) null else cat
+                                                    },
+                                                    label = { Text(cat) }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                val filteredItems = if (selectedCategory == null) {
+                                    uiState.allItems
+                                } else {
+                                    uiState.allItems.filter { it.category == selectedCategory }
                                 }
 
                                 item {
                                     SectionHeader(
-                                        title = "اقلام سرویس و قطعات فعال",
-                                        actionText = "مشاهده تمام اقلام",
-                                        onAction = onNavigateToItems
+                                        title = "اقلام و قطعات سرویس (${NumberUtil.toPersianDigits(filteredItems.size)})"
                                     )
                                 }
 
-                                val allItems = uiState.overdueItems + uiState.upcomingItems
-                                if (allItems.isEmpty()) {
+                                if (filteredItems.isEmpty()) {
                                     item {
-                                        Card(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                                        ) {
-                                            Text(
-                                                text = "اقلام سرویس استاندارد برای این خودرو فعال هستند. برای شخصی‌سازی دوره‌ها دکمه مدیریت را لمس کنید.",
-                                                modifier = Modifier.padding(16.dp),
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
+                                        EmptyState(
+                                            icon = Icons.Default.Build,
+                                            title = "هیچ قلمی یافت نشد",
+                                            description = "برای این خودرو هنوز قلم تعمیراتی در این دسته‌بندی ثبت نشده است.",
+                                            actionText = "افزودن قلم جدید",
+                                            onAction = { showAddItemDialog = true }
+                                        )
                                     }
                                 } else {
-                                    items(allItems, key = { "item_stat_${it.itemId}" }) { item ->
-                                        ServiceStatusCard(
+                                    items(filteredItems, key = { "item_${it.id}" }) { item ->
+                                        ItemRowCard(
                                             item = item,
-                                            currentKm = vehicle?.currentKm ?: 0L,
-                                            onRecordService = { onNavigateToAddRecord(item.itemId, null) }
+                                            onRecord = { onNavigateToAddRecord(item.id, null) },
+                                            onHistory = onNavigateToHistory,
+                                            onBulkRecord = { onNavigateToBulkRecord(item.id) },
+                                            onEdit = { itemToEdit = item },
+                                            onDelete = { itemToDelete = item }
                                         )
                                     }
                                 }
@@ -1203,8 +1300,14 @@ fun RecentRecordCard(recordDisplay: RecordDisplay) {
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(Modifier.height(4.dp))
+                val kmText = NumberUtil.formatKm(recordDisplay.record.km)
+                val subtitle = if (recordDisplay.dateDisplay.isNotBlank()) {
+                    "${recordDisplay.dateDisplay} • $kmText"
+                } else {
+                    "کارکرد: $kmText"
+                }
                 Text(
-                    text = "${recordDisplay.dateDisplay} • ${NumberUtil.formatKm(recordDisplay.record.km)}",
+                    text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
