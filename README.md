@@ -2,14 +2,15 @@
 
 <div align="center">
 
-![Platform](https://img.shields.io/badge/سیستم‌عامل-اندروید%20۸%20به%20بالا-blue?style=for-the-badge&logo=android)
-![Calendar](https://img.shields.io/badge/تقویم-کاملاً%20شمسی%20(جلالی)-green?style=for-the-badge)
-![Offline](https://img.shields.io/badge/اینترنت-۱۰۰٪%20آفلاین%20و%20مستقل-orange?style=for-the-badge)
-![Privacy](https://img.shields.io/badge/حریم%20خصوصی-بدون%20نیاز%20به%20ثبت‌نام-teal?style=for-the-badge)
+![Platform](https://img.shields.io/badge/Platform-Android%208.0%2B-blue?style=for-the-badge&logo=android)
+![Calendar](https://img.shields.io/badge/Calendar-Solar%20Jalali-green?style=for-the-badge)
+![Offline](https://img.shields.io/badge/Offline-100%25%20Local-orange?style=for-the-badge)
+![Privacy](https://img.shields.io/badge/Privacy-First%20%26%20Safe-teal?style=for-the-badge)
 
 **دستیار هوشمند و شخصی شما برای ثبت سوابق تعمیرات، یادآوری به‌موقع سرویس‌های دوره‌ای و مدیریت دقیق هزینه‌های خودرو**
 
 </div>
+
 <table align="center" border="0" cellspacing="0" cellpadding="3" style="border-collapse: collapse; border: none;">
   <tr style="border: none;">
     <td align="center" style="border: none;">
