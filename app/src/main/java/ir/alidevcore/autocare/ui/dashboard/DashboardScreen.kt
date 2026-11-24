@@ -38,9 +38,9 @@ import kotlinx.coroutines.launch
 
 enum class DashboardTab(val title: String, val icon: ImageVector) {
     STATUS("داشبورد", Icons.Default.DirectionsCar),
-    PLANS("برنامه آینده", Icons.Default.Event),
+    PLANS("برنامه‌ها", Icons.Default.Event),
     HISTORY("سوابق", Icons.Default.History),
-    ITEMS("اقلام سرویس", Icons.Default.Build),
+    ITEMS("اقلام", Icons.Default.Build),
     EXPENSES("هزینه‌ها", Icons.Default.MonetizationOn)
 }
 
@@ -67,6 +67,19 @@ fun DashboardScreen(
 
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshDashboard()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -140,9 +153,9 @@ fun DashboardScreen(
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
                         value = kmInput,
-                        onValueChange = { kmInput = it },
+                        onValueChange = { kmInput = NumberUtil.formatKmInput(it) },
                         label = { Text("کیلومتر جدید") },
-                        placeholder = { Text("مثال: ۱۲۵۰۰۰") },
+                        placeholder = { Text("مثال: 120,000") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
@@ -152,7 +165,7 @@ fun DashboardScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        val newKm = kmInput.trim().toLongOrNull()
+                        val newKm = NumberUtil.parsePersianNumber(kmInput)
                         if (newKm != null && newKm >= 0) {
                             if (newKm < currentKm) {
                                 showKmDecreaseWarning = newKm
@@ -294,16 +307,15 @@ fun DashboardScreen(
                             year = vehicle?.year,
                             currentKm = vehicle?.currentKm ?: 0L,
                             onUpdateKm = {
-                                kmInput = vehicle?.currentKm?.toString() ?: ""
+                                kmInput = NumberUtil.formatKmInput(vehicle?.currentKm?.toString() ?: "")
                                 showKmDialog = true
                             }
                         )
                     }
 
-                    // Modern Tab navigation bar
-                    ScrollableTabRow(
+                    // Modern Tab navigation bar (Fixed 5-column single row)
+                    TabRow(
                         selectedTabIndex = selectedTab.ordinal,
-                        edgePadding = 16.dp,
                         containerColor = MaterialTheme.colorScheme.surface,
                         contentColor = MaterialTheme.colorScheme.primary,
                         divider = {
@@ -315,52 +327,48 @@ fun DashboardScreen(
                             Tab(
                                 selected = selected,
                                 onClick = { selectedTab = tab },
-                                text = {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                                    ) {
-                                        Text(
-                                            text = tab.title,
-                                            style = if (selected) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
-                                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
-                                        )
-                                        if (tab == DashboardTab.PLANS && uiState.pendingPlans.isNotEmpty()) {
-                                            Spacer(Modifier.width(6.dp))
-                                            Surface(
-                                                shape = RoundedCornerShape(50),
-                                                color = MaterialTheme.colorScheme.secondary
-                                            ) {
-                                                Text(
-                                                    text = NumberUtil.toPersianDigits(uiState.pendingPlans.size),
-                                                    color = MaterialTheme.colorScheme.onSecondary,
-                                                    fontSize = 11.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
-                                                )
-                                            }
-                                        } else if (tab == DashboardTab.STATUS && uiState.overdueItems.isNotEmpty()) {
-                                            Spacer(Modifier.width(6.dp))
-                                            Surface(
-                                                shape = RoundedCornerShape(50),
-                                                color = StatusOverdue
-                                            ) {
-                                                Text(
-                                                    text = NumberUtil.toPersianDigits(uiState.overdueItems.size),
-                                                    color = Color.White,
-                                                    fontSize = 11.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
-                                                )
+                                icon = {
+                                    BadgedBox(
+                                        badge = {
+                                            if (tab == DashboardTab.PLANS && uiState.pendingPlans.isNotEmpty()) {
+                                                Badge(
+                                                    containerColor = MaterialTheme.colorScheme.secondary,
+                                                    contentColor = MaterialTheme.colorScheme.onSecondary
+                                                ) {
+                                                    Text(
+                                                        NumberUtil.toPersianDigits(uiState.pendingPlans.size),
+                                                        fontSize = 10.sp,
+                                                        fontWeight = FontWeight.Bold
+                                                    )
+                                                }
+                                            } else if (tab == DashboardTab.STATUS && uiState.overdueItems.isNotEmpty()) {
+                                                Badge(
+                                                    containerColor = StatusOverdue,
+                                                    contentColor = Color.White
+                                                ) {
+                                                    Text(
+                                                        NumberUtil.toPersianDigits(uiState.overdueItems.size),
+                                                        fontSize = 10.sp,
+                                                        fontWeight = FontWeight.Bold
+                                                    )
+                                                }
                                             }
                                         }
+                                    ) {
+                                        Icon(
+                                            tab.icon,
+                                            contentDescription = tab.title,
+                                            modifier = Modifier.size(20.dp)
+                                        )
                                     }
                                 },
-                                icon = {
-                                    Icon(
-                                        tab.icon,
-                                        contentDescription = tab.title,
-                                        modifier = Modifier.size(22.dp)
+                                text = {
+                                    Text(
+                                        text = tab.title,
+                                        style = if (selected) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodySmall,
+                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                        maxLines = 1,
+                                        fontSize = 11.5.sp
                                     )
                                 }
                             )

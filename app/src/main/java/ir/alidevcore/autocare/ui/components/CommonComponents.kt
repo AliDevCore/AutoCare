@@ -87,11 +87,16 @@ fun SectionHeader(
             text = title,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.weight(1f, fill = false),
+            maxLines = 1
         )
         if (actionText != null && onAction != null) {
-            TextButton(onClick = onAction) {
-                Text(actionText, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            TextButton(
+                onClick = onAction,
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+            ) {
+                Text(actionText, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
             }
         }
     }

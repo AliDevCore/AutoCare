@@ -68,64 +68,61 @@ class DashboardViewModel @Inject constructor(
         loadDashboard()
     }
 
+    private var loadJob: kotlinx.coroutines.Job? = null
+
     private fun loadDashboard() {
-        viewModelScope.launch {
-            vehicleRepository.getVehicleById(vehicleId)
-                .filterNotNull()
-                .collect { vehicle ->
-                    // Compute item statuses
-                    val itemStatuses = maintenanceRepository.computeItemStatuses(vehicle.id, vehicle.currentKm)
-                    val overdueItems = itemStatuses.filter { it.status == ServiceStatus.OVERDUE }
-                    val upcomingItems = itemStatuses.filter { it.status == ServiceStatus.UPCOMING }
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
+            combine(
+                vehicleRepository.getVehicleById(vehicleId).filterNotNull(),
+                maintenanceRepository.getActiveItemsForVehicle(vehicleId),
+                maintenanceRepository.getPendingServicesForVehicle(vehicleId),
+                maintenanceRepository.getRecentRecordsForVehicle(vehicleId, 5)
+            ) { vehicle, activeItems, pendingPlansList, recentRecordsList ->
+                // Compute item statuses
+                val itemStatuses = maintenanceRepository.computeItemStatuses(vehicle.id, vehicle.currentKm)
+                val overdueItems = itemStatuses.filter { it.status == ServiceStatus.OVERDUE }
+                val upcomingItems = itemStatuses.filter { it.status == ServiceStatus.UPCOMING }
 
-                    // Get recent records with item names
-                    val recentRecords = mutableListOf<RecordDisplay>()
-                    maintenanceRepository.getRecentRecordsForVehicle(vehicle.id, 5)
-                        .first()
-                        .forEach { record ->
-                            val item = maintenanceRepository.getItemByIdOnce(record.itemId)
-                            recentRecords.add(
-                                RecordDisplay(
-                                    record = record,
-                                    itemName = item?.name ?: "نامشخص",
-                                    dateDisplay = record.date?.let { JalaliDateUtil.timestampToJalaliStringWithMonthName(it) } ?: "فقط کارکرد"
-                                )
-                            )
-                        }
-
-                    // Get pending plans with item names
-                    val pendingPlans = mutableListOf<PlannedServiceDisplay>()
-                    maintenanceRepository.getPendingServicesForVehicle(vehicle.id).first()
-                        .forEach { plan ->
-                            val item = maintenanceRepository.getItemByIdOnce(plan.itemId)
-                            pendingPlans.add(
-                                PlannedServiceDisplay(
-                                    plan = plan,
-                                    itemName = item?.name ?: "سرویس دوره‌ای"
-                                )
-                            )
-                        }
-
-                    // Monthly cost
-                    val now = System.currentTimeMillis()
-                    val startOfMonth = JalaliDateUtil.run {
-                        val (y, m, _) = getCurrentJalaliDate()
-                        getStartOfJalaliMonth(y, m)
-                    }
-                    val monthlyTotal = maintenanceRepository.getTotalCostForVehicleInRange(vehicle.id, startOfMonth, now)
-
-                    _uiState.update {
-                        it.copy(
-                            vehicle = vehicle,
-                            overdueItems = overdueItems,
-                            upcomingItems = upcomingItems,
-                            recentRecords = recentRecords,
-                            pendingPlans = pendingPlans,
-                            monthlyTotal = monthlyTotal,
-                            isLoading = false
-                        )
-                    }
+                // Map pending plans with item names
+                val pendingPlans = pendingPlansList.map { plan ->
+                    val item = activeItems.find { it.id == plan.itemId } ?: maintenanceRepository.getItemByIdOnce(plan.itemId)
+                    PlannedServiceDisplay(
+                        plan = plan,
+                        itemName = item?.name ?: "سرویس دوره‌ای"
+                    )
                 }
+
+                // Map recent records with item names
+                val recentRecords = recentRecordsList.map { record ->
+                    val item = activeItems.find { it.id == record.itemId } ?: maintenanceRepository.getItemByIdOnce(record.itemId)
+                    RecordDisplay(
+                        record = record,
+                        itemName = item?.name ?: "نامشخص",
+                        dateDisplay = record.date?.let { JalaliDateUtil.timestampToJalaliStringWithMonthName(it) } ?: "فقط کارکرد"
+                    )
+                }
+
+                // Monthly cost
+                val now = System.currentTimeMillis()
+                val startOfMonth = JalaliDateUtil.run {
+                    val (y, m, _) = getCurrentJalaliDate()
+                    getStartOfJalaliMonth(y, m)
+                }
+                val monthlyTotal = maintenanceRepository.getTotalCostForVehicleInRange(vehicle.id, startOfMonth, now)
+
+                DashboardUiState(
+                    vehicle = vehicle,
+                    overdueItems = overdueItems,
+                    upcomingItems = upcomingItems,
+                    recentRecords = recentRecords,
+                    pendingPlans = pendingPlans,
+                    monthlyTotal = monthlyTotal,
+                    isLoading = false
+                )
+            }.collect { newState ->
+                _uiState.value = newState
+            }
         }
     }
 

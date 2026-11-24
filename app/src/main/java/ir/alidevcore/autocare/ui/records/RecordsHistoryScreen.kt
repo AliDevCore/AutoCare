@@ -76,8 +76,8 @@ fun RecordsHistoryScreen(
     }
 
     if (showKmFilterDialog) {
-        var fromKmText by remember { mutableStateOf(uiState.fromKm?.toString() ?: "") }
-        var toKmText by remember { mutableStateOf(uiState.toKm?.toString() ?: "") }
+        var fromKmText by remember { mutableStateOf(uiState.fromKm?.let { NumberUtil.formatKmInput(it.toString()) } ?: "") }
+        var toKmText by remember { mutableStateOf(uiState.toKm?.let { NumberUtil.formatKmInput(it.toString()) } ?: "") }
 
         AlertDialog(
             onDismissRequest = { showKmFilterDialog = false },
@@ -86,16 +86,18 @@ fun RecordsHistoryScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedTextField(
                         value = fromKmText,
-                        onValueChange = { fromKmText = it },
+                        onValueChange = { fromKmText = NumberUtil.formatKmInput(it) },
                         label = { Text("از کیلومتر") },
+                        placeholder = { Text("مثلاً: 10,000") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
                     OutlinedTextField(
                         value = toKmText,
-                        onValueChange = { toKmText = it },
+                        onValueChange = { toKmText = NumberUtil.formatKmInput(it) },
                         label = { Text("تا کیلومتر") },
+                        placeholder = { Text("مثلاً: 50,000") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
@@ -104,8 +106,8 @@ fun RecordsHistoryScreen(
             },
             confirmButton = {
                 Button(onClick = {
-                    val f = fromKmText.trim().let { if (it.isNotBlank()) it.toLongOrNull() else null }
-                    val t = toKmText.trim().let { if (it.isNotBlank()) it.toLongOrNull() else null }
+                    val f = fromKmText.trim().let { if (it.isNotBlank()) NumberUtil.parsePersianNumber(it) else null }
+                    val t = toKmText.trim().let { if (it.isNotBlank()) NumberUtil.parsePersianNumber(it) else null }
                     viewModel.setKmRange(f, t)
                     showKmFilterDialog = false
                 }) {

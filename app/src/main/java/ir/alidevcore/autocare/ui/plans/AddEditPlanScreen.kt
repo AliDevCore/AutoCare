@@ -148,7 +148,7 @@ fun AddEditPlanScreen(
                     value = uiState.targetKmText,
                     onValueChange = { viewModel.onTargetKmChanged(it) },
                     label = { Text("کیلومتر هدف (اختیاری)") },
-                    placeholder = { Text("مثلاً: ۱۳۵۰۰۰") },
+                    placeholder = { Text("مثلاً: 120,000") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()

@@ -19,6 +19,16 @@ object NumberUtil {
     }
 
     /**
+     * Formats number string with thousand separators as user types (e.g. "120000" -> "120,000")
+     */
+    fun formatKmInput(raw: String): String {
+        val clean = raw.replace(",", "").replace("٬", "").replace("،", "").trim()
+        if (clean.isBlank()) return ""
+        val number = parsePersianNumber(clean) ?: return clean
+        return NumberFormat.getNumberInstance(Locale.US).format(number)
+    }
+
+    /**
      * Parse Persian/Arabic numerals to Int
      */
     fun parsePersianNumber(str: String): Long? {

@@ -300,7 +300,7 @@ fun AddEditRecordScreen(
                     value = uiState.kmText,
                     onValueChange = { viewModel.onKmChanged(it) },
                     label = { Text("کیلومتر هنگام سرویس*") },
-                    placeholder = { Text("مثلاً: ۱۲۵۰۰۰") },
+                    placeholder = { Text("مثلاً: 120,000") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -391,7 +391,7 @@ fun AddEditRecordScreen(
                             value = uiState.nextKmText,
                             onValueChange = { viewModel.onNextKmChanged(it) },
                             label = { Text("کیلومتر نوبت بعدی") },
-                            placeholder = { Text("مثلاً: ۱۳۰۰۰۰") },
+                            placeholder = { Text("مثلاً: 125,000") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()

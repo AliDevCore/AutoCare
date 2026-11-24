@@ -108,7 +108,7 @@ class BulkRecordViewModel @Inject constructor(
             if (!existingKms.contains(km)) {
                 currentRows.add(
                     BulkRowItem(
-                        kmText = km.toString(),
+                        kmText = NumberUtil.formatKmInput(km.toString()),
                         date = null,
                         costText = "",
                         description = ""
@@ -168,10 +168,11 @@ class BulkRecordViewModel @Inject constructor(
     }
 
     fun updateRowKm(rowId: String, km: String) {
+        val formatted = NumberUtil.formatKmInput(km)
         _uiState.update { state ->
             state.copy(
                 rows = state.rows.map { row ->
-                    if (row.id == rowId) row.copy(kmText = km) else row
+                    if (row.id == rowId) row.copy(kmText = formatted) else row
                 }
             )
         }

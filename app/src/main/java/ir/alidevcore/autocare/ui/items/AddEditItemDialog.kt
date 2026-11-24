@@ -28,7 +28,7 @@ fun AddEditItemDialog(
     var category by remember { mutableStateOf(item?.category ?: (availableCategories.firstOrNull() ?: "سرویس‌های عمومی")) }
     var isCustomCategory by remember { mutableStateOf(false) }
     var customCategoryText by remember { mutableStateOf("") }
-    var intervalKmText by remember { mutableStateOf(item?.intervalKm?.toString() ?: "") }
+    var intervalKmText by remember { mutableStateOf(item?.intervalKm?.let { NumberUtil.formatKmInput(it.toString()) } ?: "") }
     var intervalMonthsText by remember { mutableStateOf(item?.intervalMonths?.toString() ?: "") }
     var description by remember { mutableStateOf(item?.description ?: "") }
     var isActive by remember { mutableStateOf(item?.isActive ?: true) }
@@ -111,9 +111,9 @@ fun AddEditItemDialog(
 
                 OutlinedTextField(
                     value = intervalKmText,
-                    onValueChange = { intervalKmText = it },
+                    onValueChange = { intervalKmText = NumberUtil.formatKmInput(it) },
                     label = { Text("فاصله دوره‌ای کیلومتر (اختیاری)") },
-                    placeholder = { Text("مثلاً: ۵۰۰۰") },
+                    placeholder = { Text("مثلاً: 5,000") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()

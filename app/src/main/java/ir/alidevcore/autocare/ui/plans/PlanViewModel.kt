@@ -65,7 +65,7 @@ class PlanViewModel @Inject constructor(
                 val plan = maintenanceRepository.getServiceById(planId)
                 if (plan != null) {
                     selectedItem = items.find { it.id == plan.itemId }
-                    km = plan.targetKm?.toString() ?: ""
+                    km = plan.targetKm?.let { NumberUtil.formatKmInput(it.toString()) } ?: ""
                     date = plan.targetDate
                     notes = plan.notes
 
@@ -97,7 +97,7 @@ class PlanViewModel @Inject constructor(
     }
 
     fun onTargetKmChanged(km: String) {
-        _uiState.update { it.copy(targetKmText = km) }
+        _uiState.update { it.copy(targetKmText = NumberUtil.formatKmInput(km)) }
     }
 
     fun onTargetDateChanged(timestamp: Long?) {
@@ -128,7 +128,7 @@ class PlanViewModel @Inject constructor(
             return
         }
 
-        val km = state.targetKmText.trim().let { if (it.isNotBlank()) it.toLongOrNull() else null }
+        val km = state.targetKmText.trim().let { if (it.isNotBlank()) NumberUtil.parsePersianNumber(it) else null }
         val date = state.targetDate
 
         if (km == null && date == null) {

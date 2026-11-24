@@ -73,7 +73,7 @@ class RecordViewModel @Inject constructor(
             var selectedItem: MaintenanceItem? = null
             var defaultDate = System.currentTimeMillis()
             var isDateUnknown = false
-            var defaultKm = vehicle?.currentKm?.toString() ?: ""
+            var defaultKm = vehicle?.currentKm?.let { NumberUtil.formatKmInput(it.toString()) } ?: ""
             var desc = ""
             var parts = ""
             var workshop = ""
@@ -90,7 +90,7 @@ class RecordViewModel @Inject constructor(
                     } else {
                         isDateUnknown = true
                     }
-                    defaultKm = record.km.toString()
+                    defaultKm = NumberUtil.formatKmInput(record.km.toString())
                     cost = record.cost?.toString() ?: ""
                     desc = record.description
                     parts = record.parts
@@ -101,7 +101,7 @@ class RecordViewModel @Inject constructor(
                 val plan = maintenanceRepository.getServiceById(planId)
                 if (plan != null) {
                     selectedItem = items.find { it.id == plan.itemId }
-                    if (plan.targetKm != null) defaultKm = plan.targetKm.toString()
+                    if (plan.targetKm != null) defaultKm = NumberUtil.formatKmInput(plan.targetKm.toString())
                     if (plan.targetDate != null) defaultDate = plan.targetDate
                     desc = plan.notes
                 }
@@ -116,14 +116,14 @@ class RecordViewModel @Inject constructor(
 
             val item = selectedItem ?: items.firstOrNull()
             if (item != null) {
-                val currentKmVal = defaultKm.toLongOrNull() ?: vehicle?.currentKm ?: 0L
+                val currentKmVal = NumberUtil.parsePersianNumber(defaultKm) ?: vehicle?.currentKm ?: 0L
                 if (item.intervalKm != null && item.intervalMonths != null) {
                     nextMode = NextScheduleMode.BOTH
-                    nextKm = (currentKmVal + item.intervalKm).toString()
+                    nextKm = NumberUtil.formatKmInput((currentKmVal + item.intervalKm).toString())
                     nextDateTimestamp = JalaliDateUtil.addMonthsToTimestamp(defaultDate, item.intervalMonths)
                 } else if (item.intervalKm != null) {
                     nextMode = NextScheduleMode.ONLY_KM
-                    nextKm = (currentKmVal + item.intervalKm).toString()
+                    nextKm = NumberUtil.formatKmInput((currentKmVal + item.intervalKm).toString())
                 } else if (item.intervalMonths != null) {
                     nextMode = NextScheduleMode.ONLY_DATE
                     nextDateTimestamp = JalaliDateUtil.addMonthsToTimestamp(defaultDate, item.intervalMonths)
@@ -153,7 +153,7 @@ class RecordViewModel @Inject constructor(
     }
 
     fun onItemSelected(item: MaintenanceItem) {
-        val currentKm = _uiState.value.kmText.toLongOrNull() ?: _uiState.value.vehicle?.currentKm ?: 0L
+        val currentKm = NumberUtil.parsePersianNumber(_uiState.value.kmText) ?: _uiState.value.vehicle?.currentKm ?: 0L
         val currentDate = _uiState.value.date
 
         var nextMode = _uiState.value.nextScheduleMode
@@ -162,11 +162,11 @@ class RecordViewModel @Inject constructor(
 
         if (item.intervalKm != null && item.intervalMonths != null) {
             nextMode = NextScheduleMode.BOTH
-            nextKm = (currentKm + item.intervalKm).toString()
+            nextKm = NumberUtil.formatKmInput((currentKm + item.intervalKm).toString())
             nextDateTimestamp = JalaliDateUtil.addMonthsToTimestamp(currentDate, item.intervalMonths)
         } else if (item.intervalKm != null) {
             nextMode = NextScheduleMode.ONLY_KM
-            nextKm = (currentKm + item.intervalKm).toString()
+            nextKm = NumberUtil.formatKmInput((currentKm + item.intervalKm).toString())
         } else if (item.intervalMonths != null) {
             nextMode = NextScheduleMode.ONLY_DATE
             nextDateTimestamp = JalaliDateUtil.addMonthsToTimestamp(currentDate, item.intervalMonths)
@@ -212,12 +212,13 @@ class RecordViewModel @Inject constructor(
     }
 
     fun onKmChanged(km: String) {
+        val formatted = NumberUtil.formatKmInput(km)
         _uiState.update { state ->
-            val parsed = km.toLongOrNull()
+            val parsed = NumberUtil.parsePersianNumber(formatted)
             val nextKm = if (parsed != null && state.selectedItem?.intervalKm != null) {
-                (parsed + state.selectedItem.intervalKm).toString()
+                NumberUtil.formatKmInput((parsed + state.selectedItem.intervalKm).toString())
             } else state.nextKmText
-            state.copy(kmText = km, nextKmText = nextKm)
+            state.copy(kmText = formatted, nextKmText = nextKm)
         }
     }
 
@@ -242,7 +243,8 @@ class RecordViewModel @Inject constructor(
     }
 
     fun onNextKmChanged(km: String) {
-        _uiState.update { it.copy(nextKmText = km) }
+        val formatted = NumberUtil.formatKmInput(km)
+        _uiState.update { it.copy(nextKmText = formatted) }
     }
 
     fun onNextDateChanged(timestamp: Long) {
@@ -257,7 +259,7 @@ class RecordViewModel @Inject constructor(
             return
         }
 
-        val km = state.kmText.toLongOrNull()
+        val km = NumberUtil.parsePersianNumber(state.kmText)
         if (km == null || km < 0) {
             _uiState.update { it.copy(error = "کیلومتر واردشده نامعتبر است") }
             return
@@ -298,7 +300,7 @@ class RecordViewModel @Inject constructor(
                 // Create planned service for next turn if scheduled
                 if (!state.isEditing && state.nextScheduleMode != NextScheduleMode.NONE) {
                     val nextKmVal = if (state.nextScheduleMode in listOf(NextScheduleMode.ONLY_KM, NextScheduleMode.BOTH)) {
-                        state.nextKmText.toLongOrNull()
+                        NumberUtil.parsePersianNumber(state.nextKmText)
                     } else null
 
                     val nextDateVal = if (state.nextScheduleMode in listOf(NextScheduleMode.ONLY_DATE, NextScheduleMode.BOTH)) {

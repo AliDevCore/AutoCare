@@ -503,7 +503,7 @@ fun BulkRowCard(
                 value = row.kmText,
                 onValueChange = onKmChanged,
                 label = { Text("کیلومتر کارکرد*") },
-                placeholder = { Text("مثلاً: ۳۰۰۰۰") },
+                placeholder = { Text("مثلاً: 30,000") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()

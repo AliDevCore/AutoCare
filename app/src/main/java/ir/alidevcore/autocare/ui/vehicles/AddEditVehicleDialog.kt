@@ -17,7 +17,7 @@ fun AddEditVehicleDialog(
     onSave: (name: String, currentKm: Long, year: Int?) -> Unit
 ) {
     var name by remember { mutableStateOf(vehicle?.name ?: "") }
-    var kmText by remember { mutableStateOf(vehicle?.currentKm?.toString() ?: "") }
+    var kmText by remember { mutableStateOf(vehicle?.currentKm?.let { NumberUtil.formatKmInput(it.toString()) } ?: "") }
     var yearText by remember { mutableStateOf(vehicle?.year?.toString() ?: "") }
     var errorText by remember { mutableStateOf<String?>(null) }
     var showKmDecreaseWarning by remember { mutableStateOf(false) }
@@ -68,9 +68,9 @@ fun AddEditVehicleDialog(
 
                 OutlinedTextField(
                     value = kmText,
-                    onValueChange = { kmText = it },
+                    onValueChange = { kmText = NumberUtil.formatKmInput(it) },
                     label = { Text("کیلومتر فعلی خودرو*") },
-                    placeholder = { Text("مثلاً: ۱۲۵۰۰۰") },
+                    placeholder = { Text("مثلاً: 120,000") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
