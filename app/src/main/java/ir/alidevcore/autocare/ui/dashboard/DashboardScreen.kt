@@ -378,74 +378,7 @@ fun DashboardScreen(
 
                         when (selectedTab) {
                             DashboardTab.STATUS -> {
-                                // 1. Action Shortcuts to switch or perform actions
-                                item {
-                                    ActionShortcutsRow(
-                                        onAddRecord = { onNavigateToAddRecord(null, null) },
-                                        onAddPlan = { selectedTab = DashboardTab.PLANS },
-                                        onHistory = { selectedTab = DashboardTab.HISTORY },
-                                        onItems = { selectedTab = DashboardTab.ITEMS }
-                                    )
-                                }
-
-                                // 2. Quick Historical Records Bulk Entry
-                                item {
-                                    Card(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clickable { onNavigateToBulkRecord(null) },
-                                        shape = RoundedCornerShape(14.dp),
-                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
-                                    ) {
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(14.dp),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Row(
-                                                modifier = Modifier.weight(1f),
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .size(42.dp)
-                                                        .clip(CircleShape)
-                                                        .background(MaterialTheme.colorScheme.tertiary),
-                                                    contentAlignment = Alignment.Center
-                                                ) {
-                                                    Icon(
-                                                        Icons.AutoMirrored.Filled.PlaylistAdd,
-                                                        contentDescription = null,
-                                                        tint = MaterialTheme.colorScheme.onTertiary
-                                                    )
-                                                }
-                                                Spacer(Modifier.width(12.dp))
-                                                Column {
-                                                    Text(
-                                                        text = "ثبت دسته‌جمعی سوابق گذشته",
-                                                        style = MaterialTheme.typography.titleMedium,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = MaterialTheme.colorScheme.onTertiaryContainer
-                                                    )
-                                                    Text(
-                                                        text = "ورود سریع سوابق گذشته (مانند شمع یا لنت در کیلومترهای مختلف)",
-                                                        style = MaterialTheme.typography.bodySmall,
-                                                        color = MaterialTheme.colorScheme.onTertiaryContainer
-                                                    )
-                                                }
-                                            }
-                                            Icon(
-                                                Icons.AutoMirrored.Filled.ArrowBack,
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.onTertiaryContainer
-                                            )
-                                        }
-                                    }
-                                }
-
-                                // 3. Monthly Expense Summary Card
+                                // 1. Monthly Expense Summary Card
                                 item {
                                     MonthlyExpenseCard(
                                         amount = uiState.monthlyTotal,
@@ -453,7 +386,7 @@ fun DashboardScreen(
                                     )
                                 }
 
-                                // 4. Overdue Services Section
+                                // 2. Overdue Services Section
                                 if (uiState.overdueItems.isNotEmpty()) {
                                     item {
                                         SectionHeader(
@@ -469,7 +402,7 @@ fun DashboardScreen(
                                     }
                                 }
 
-                                // 5. Upcoming Services Section
+                                // 3. Upcoming Services Section
                                 if (uiState.upcomingItems.isNotEmpty()) {
                                     item {
                                         SectionHeader(
@@ -522,11 +455,11 @@ fun DashboardScreen(
                                     }
                                 }
 
-                                // 6. Recent Records preview
+                                // 4. Recent Records preview
                                 item {
                                     SectionHeader(
                                         title = "آخرین سوابق ثبت‌شده",
-                                        actionText = "مشاهده همه سوابق",
+                                        actionText = "مشاهده همه",
                                         onAction = { selectedTab = DashboardTab.HISTORY }
                                     )
                                 }
@@ -559,11 +492,12 @@ fun DashboardScreen(
                                         onClick = { onNavigateToAddPlan(null, null) },
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .height(54.dp),
+                                            .defaultMinSize(minHeight = 48.dp),
                                         shape = RoundedCornerShape(14.dp),
+                                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
                                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                                     ) {
-                                        Icon(Icons.Default.AddCircle, contentDescription = null, modifier = Modifier.size(22.dp))
+                                        Icon(Icons.Default.AddCircle, contentDescription = null, modifier = Modifier.size(20.dp))
                                         Spacer(Modifier.width(8.dp))
                                         Text(
                                             "برنامه‌ریزی سرویس آینده جدید",
@@ -617,21 +551,27 @@ fun DashboardScreen(
                                     ) {
                                         Button(
                                             onClick = { onNavigateToAddRecord(null, null) },
-                                            modifier = Modifier.weight(1f).height(50.dp),
-                                            shape = RoundedCornerShape(12.dp)
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .defaultMinSize(minHeight = 48.dp),
+                                            shape = RoundedCornerShape(12.dp),
+                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp)
                                         ) {
-                                            Icon(Icons.Default.Add, contentDescription = null)
-                                            Spacer(Modifier.width(6.dp))
-                                            Text("ثبت سرویس جدید", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                                            Spacer(Modifier.width(4.dp))
+                                            Text("ثبت سرویس", fontSize = 13.5.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                                         }
                                         OutlinedButton(
                                             onClick = { onNavigateToBulkRecord(null) },
-                                            modifier = Modifier.weight(1f).height(50.dp),
-                                            shape = RoundedCornerShape(12.dp)
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .defaultMinSize(minHeight = 48.dp),
+                                            shape = RoundedCornerShape(12.dp),
+                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp)
                                         ) {
-                                            Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = null)
-                                            Spacer(Modifier.width(6.dp))
-                                            Text("ثبت دسته‌جمعی", fontSize = 14.sp)
+                                            Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = null, modifier = Modifier.size(18.dp))
+                                            Spacer(Modifier.width(4.dp))
+                                            Text("ثبت دسته‌جمعی", fontSize = 13.5.sp, fontWeight = FontWeight.Medium, maxLines = 1)
                                         }
                                     }
                                 }
@@ -639,19 +579,22 @@ fun DashboardScreen(
                                 item {
                                     FilledTonalButton(
                                         onClick = onNavigateToHistory,
-                                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                                        shape = RoundedCornerShape(12.dp)
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .defaultMinSize(minHeight = 48.dp),
+                                        shape = RoundedCornerShape(12.dp),
+                                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
                                     ) {
-                                        Icon(Icons.Default.Search, contentDescription = null)
+                                        Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp))
                                         Spacer(Modifier.width(8.dp))
-                                        Text("جستجو، فیلتر و خروجی اکسل در صفحه کامل سوابق", fontSize = 14.sp)
+                                        Text("جستجو، فیلتر و خروجی اکسل", fontSize = 13.5.sp, fontWeight = FontWeight.Medium, maxLines = 1)
                                     }
                                 }
 
                                 item {
                                     SectionHeader(
                                         title = "آخرین سوابق ثبت‌شده خودرو",
-                                        actionText = "صفحه کامل سوابق",
+                                        actionText = "مشاهده همه",
                                         onAction = onNavigateToHistory
                                     )
                                 }
@@ -677,12 +620,15 @@ fun DashboardScreen(
                                 item {
                                     Button(
                                         onClick = onNavigateToItems,
-                                        modifier = Modifier.fillMaxWidth().height(52.dp),
-                                        shape = RoundedCornerShape(14.dp)
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .defaultMinSize(minHeight = 48.dp),
+                                        shape = RoundedCornerShape(14.dp),
+                                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp)
                                     ) {
-                                        Icon(Icons.Default.Build, contentDescription = null)
+                                        Icon(Icons.Default.Build, contentDescription = null, modifier = Modifier.size(18.dp))
                                         Spacer(Modifier.width(8.dp))
-                                        Text("مدیریت و افزودن اقلام سرویس جدید", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                                        Text("مدیریت و افزودن اقلام سرویس", fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                                     }
                                 }
 
@@ -731,12 +677,15 @@ fun DashboardScreen(
                                 item {
                                     Button(
                                         onClick = onNavigateToExpenses,
-                                        modifier = Modifier.fillMaxWidth().height(52.dp),
-                                        shape = RoundedCornerShape(14.dp)
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .defaultMinSize(minHeight = 48.dp),
+                                        shape = RoundedCornerShape(14.dp),
+                                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp)
                                     ) {
-                                        Icon(Icons.Default.Analytics, contentDescription = null)
+                                        Icon(Icons.Default.Analytics, contentDescription = null, modifier = Modifier.size(18.dp))
                                         Spacer(Modifier.width(8.dp))
-                                        Text("مشاهده گزارش تحلیلی کامل هزینه‌ها و نمودارها", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                                        Text("گزارش تحلیلی و نمودار هزینه‌ها", fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                                     }
                                 }
 
@@ -832,28 +781,35 @@ fun VehicleMileageHeaderCard(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f, fill = false)
+                    ) {
                         Icon(
                             Icons.Default.Speed,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
                         )
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(6.dp))
                         Text(
-                            text = "کیلومتر فعلی خودرو:",
+                            text = "کیلومتر فعلی:",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium
                         )
                     }
+                    Spacer(Modifier.width(8.dp))
                     Text(
                         text = NumberUtil.formatKm(currentKm),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
             }
