@@ -57,7 +57,7 @@ class DashboardViewModel @Inject constructor(
     private val reminderRepository: ReminderRepository,
     private val reminderScheduler: ReminderScheduler,
     private val backupManager: DatabaseBackupManager,
-    savedStateHandle: SavedStateHandle
+    private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     val vehicleId: Long = savedStateHandle.get<Long>("vehicleId") ?: 0L
